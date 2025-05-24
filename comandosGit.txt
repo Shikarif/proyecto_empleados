@@ -1,0 +1,4 @@
+Hacer cambios dentro del sistema
+   git add .
+   git commit -m "Descripción de los cambios"
+   git push
