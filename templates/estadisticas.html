@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="row">
+    <!-- Tarjeta de Total de Empleados -->
+    <div class="col-md-4 mb-4">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body text-center">
+                <div class="display-1 mb-3">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h5 class="card-title">Total de Empleados</h5>
+                <h2 class="display-4 fw-bold">{{ total_empleados }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjeta de Últimos Agregados -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header bg-gradient-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-plus"></i> Últimos Empleados Agregados
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Equipo</th>
+                                <th>Rol</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for empleado in ultimos_agregados %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle bg-primary text-white me-2">
+                                            {{ empleado['nombre'][0] }}{{ empleado['apellido'][0] }}
+                                        </div>
+                                        {{ empleado['nombre'] }} {{ empleado['apellido'] }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        {% if empleado['equipo_id'] %}
+                                            {% for eq in empleados_por_equipo %}
+                                                {% if eq['equipo'] and loop.index == empleado['equipo_id'] %}{{ eq['equipo'] }}{% endif %}
+                                            {% endfor %}
+                                        {% else %}No especificado{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ empleado['rol']|capitalize }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Empleados por Equipo -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-gradient-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i> Distribución por Equipo
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Total de Empleados</th>
+                                <th>Porcentaje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in empleados_por_equipo %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-users text-primary me-2"></i>
+                                        {{ eq['equipo'] or 'No especificado' }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {{ eq['total'] }} empleados
+                                    </span>
+                                </td>
+                                <td style="width: 50%;">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-gradient-primary" role="progressbar" 
+                                             style="width: {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%">
+                                            {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #3498db, #2ecc71);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.badge {
+    padding: 0.5em 1em;
+    font-weight: 500;
+}
+
+.progress {
+    height: 1.5rem;
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.table td {
+    vertical-align: middle;
+}
+</style>
+{% endblock %} 

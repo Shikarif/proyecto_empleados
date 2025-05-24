@@ -1,0 +1,140 @@
+{% extends "base_login.html" %}
+
+{% block contenido %}
+<div class="card mt-4">
+    <div class="card-header bg-success text-white">
+        <i class="fas fa-user-plus"></i> Registrar Nuevo Usuario
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="apellido" class="form-label">Apellido</label>
+                    <input type="text" class="form-control" id="apellido" name="apellido" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="correo" class="form-label">Correo Electrónico</label>
+                    <input type="email" class="form-control" id="correo" name="correo" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="telefono" name="telefono">
+                </div>
+                <div class="col-md-6">
+                    <label for="equipo_id" class="form-label">Equipo</label>
+                    <select class="form-select" id="equipo_id" name="equipo_id">
+                        <option value="">Seleccione un equipo</option>
+                        {% for equipo in equipos %}
+                        <option value="{{ equipo['id'] }}">{{ equipo['nombre'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="rol" class="form-label">Rol</label>
+                    <select class="form-select" id="rol" name="rol" required>
+                        {% for r in roles %}
+                        <option value="{{ r }}">{{ r|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="password2" class="form-label">Confirmar Contraseña</label>
+                    <input type="password" class="form-control" id="password2" name="password2" required>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3 position-relative">
+                            <input type="text" class="form-control" id="habilidades" name="habilidades" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}">
+                            <label for="habilidades">Habilidades (separadas por coma)</label>
+                            <div class="form-text">Escribe y selecciona habilidades existentes o nuevas. Separa con coma.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3 position-relative">
+                            <input type="text" class="form-control" id="fortalezas" name="fortalezas" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}">
+                            <label for="fortalezas">Fortalezas (separadas por coma)</label>
+                            <div class="form-text">Agrega fortalezas personales o selecciona sugeridas. Separa con coma.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 d-flex justify-content-end">
+                <button type="submit" class="btn btn-success me-2">
+                    <i class="fas fa-save"></i> Registrar
+                </button>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rolSelect = document.getElementById('rol');
+    const equipoSelect = document.getElementById('equipo_id');
+    
+    function actualizarEquipo() {
+        if (rolSelect.value === 'jefe') {
+            equipoSelect.disabled = true;
+            equipoSelect.value = '';
+        } else {
+            equipoSelect.disabled = false;
+        }
+    }
+    
+    rolSelect.addEventListener('change', actualizarEquipo);
+    actualizarEquipo(); // Ejecutar al cargar la página
+});
+
+// Inicializar Awesomplete para campos múltiples
+function initAwesompleteMulti(id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+    var list = input.getAttribute('data-list').split(',');
+    new Awesomplete(input, {
+        list: list,
+        minChars: 1,
+        autoFirst: true,
+        filter: function(text, input) {
+            var terms = input.split(',');
+            return Awesomplete.FILTER_CONTAINS(text, terms[terms.length-1].trim());
+        },
+        item: function(text, input) {
+            var terms = input.split(',');
+            return Awesomplete.ITEM(text, terms[terms.length-1].trim());
+        },
+        replace: function(text) {
+            var before = this.input.value.split(',');
+            before.pop();
+            this.input.value = before.join(', ') + (before.length ? ', ' : '') + text + ', ';
+        }
+    });
+}
+
+// Validación visual en tiempo real
+['habilidades','fortalezas'].forEach(function(id) {
+    var input = document.getElementById(id);
+    if (input) {
+        input.addEventListener('input', function() {
+            if (input.value.trim().length > 0) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

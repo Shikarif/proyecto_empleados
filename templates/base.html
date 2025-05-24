@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Gestión de Empleados{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tema oscuro personalizado -->
+    <link href="{{ url_for('static', filename='dark_mode.css') }}" rel="stylesheet">
+    <!-- Animaciones y microinteracciones -->
+    <link href="{{ url_for('static', filename='animations.css') }}" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <!-- Awesomplete CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css" />
+    <!-- ApexCharts CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.css">
+    <!-- Chart.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.min.css">
+    <style>
+        :root {
+            --primary: #3b3f5c;
+            --secondary: #5c7cfa;
+            --accent: #f76707;
+            --success: #51cf66;
+            --warning: #fcc419;
+            --danger: #fa5252;
+            --bg: #f4f6fb;
+            --sidebar-bg: #23263a;
+            --sidebar-active: #5c7cfa;
+            --sidebar-hover: #34375a;
+            --navbar-bg: #fff;
+            --navbar-shadow: 0 2px 8px rgba(60,60,60,0.04);
+            --text-main: #23263a;
+            --text-light: #adb5bd;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+        }
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            color: #fff;
+            min-height: 100vh;
+            position: fixed;
+            left: 0; top: 0; bottom: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s;
+        }
+        .sidebar.collapsed { width: 70px; }
+        .sidebar .sidebar-header {
+            font-size: 1.4rem;
+            font-weight: 700;
+            padding: 2rem 1.5rem 1rem 1.5rem;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        .sidebar .sidebar-header i { font-size: 1.7rem; }
+        .sidebar .nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            margin-top: 1rem;
+        }
+        .sidebar .nav-link {
+            color: #fff;
+            font-weight: 500;
+            padding: 0.9rem 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.08rem;
+            transition: background 0.18s, color 0.18s;
+        }
+        .sidebar .nav-link.active, .sidebar .nav-link:focus {
+            background: var(--sidebar-active);
+            color: #fff;
+        }
+        .sidebar .nav-link:hover {
+            background: var(--sidebar-hover);
+            color: #fff;
+        }
+        .sidebar .sidebar-footer {
+            padding: 1.2rem 1.5rem;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.3rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sidebar.collapsed .sidebar-header span,
+        .sidebar.collapsed .nav-link span,
+        .sidebar.collapsed .sidebar-footer { display: none; }
+        .sidebar.collapsed { width: 70px; }
+        .sidebar.collapsed .nav-link { justify-content: center; }
+        .main-content {
+            margin-left: 240px;
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: margin-left 0.2s;
+        }
+        .main-content.collapsed { margin-left: 70px; }
+        .navbar-top {
+            background: var(--navbar-bg);
+            box-shadow: var(--navbar-shadow);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+        .navbar-top .navbar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+        .navbar-top .navbar-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+        .navbar-top .avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--secondary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .navbar-top .theme-switch-wrapper { margin-left: 0; }
+        .navbar-top .theme-switch { height: 22px; width: 44px; }
+        .navbar-top .slider { height: 22px; }
+        .navbar-top .slider:before { height: 14px; width: 14px; }
+        .container-fluid-custom {
+            padding: 2.2rem 2.5rem 1.5rem 2.5rem;
+            flex: 1;
+        }
+        @media (max-width: 900px) {
+            .sidebar { width: 70px; }
+            .sidebar .sidebar-header span,
+            .sidebar .nav-link span,
+            .sidebar .sidebar-footer { display: none; }
+            .main-content { margin-left: 70px; }
+        }
+        @media (max-width: 600px) {
+            .container-fluid-custom { padding: 1rem 0.5rem; }
+            .navbar-top { padding: 0 0.5rem; }
+        }
+        body.dark-mode {
+            background: #181a1b !important;
+            color: #f1f1f1 !important;
+        }
+        body.dark-mode .card, body.dark-mode .dropdown-menu {
+            background: #23272b !important;
+            color: #f1f1f1 !important;
+        }
+        body.dark-mode .btn-light {
+            background: #23272b !important;
+            color: #f1f1f1 !important;
+            border-color: #444 !important;
+        }
+        body.dark-mode .navbar-top {
+            background: #23272b !important;
+            color: #f1f1f1 !important;
+        }
+        body.dark-mode .navbar-title { color: #f1f1f1 !important; }
+        .theme-toggle-btn, .notif-btn, .avatar-btn {
+            transition: box-shadow 0.2s, transform 0.18s;
+        }
+        .theme-toggle-btn:active, .notif-btn:active, .avatar-btn:active {
+            transform: scale(0.92) rotate(-10deg);
+        }
+        .theme-toggle-btn:hover, .notif-btn:hover, .avatar-btn:hover {
+            box-shadow: 0 4px 16px rgba(92,124,250,0.18);
+            transform: scale(1.08);
+        }
+        .theme-toggle-btn i, .notif-btn i {
+            transition: transform 0.4s cubic-bezier(.68,-0.55,.27,1.55);
+        }
+        .theme-toggle-btn.active i {
+            transform: rotate(180deg);
+        }
+        .notif-badge {
+            animation: bounceIn 0.7s;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .avatar-btn span {
+            transition: background 0.2s, color 0.2s;
+        }
+        .avatar-btn:hover span {
+            background: var(--secondary);
+            color: #fff;
+        }
+        body, .main-content, .navbar-top {
+            transition: background 0.4s, color 0.4s;
+        }
+        .theme-toggle-btn-modern {
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 44px; height: 44px;
+            box-shadow: 0 2px 8px rgba(60,60,60,0.08);
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s, background 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .theme-toggle-btn-modern:hover {
+            box-shadow: 0 4px 16px #5c7cfa44, 0 0 8px #5c7cfa88;
+            background: #f4f6fb;
+        }
+        .theme-icon-flip {
+            display: block;
+            position: relative;
+            width: 24px; height: 24px;
+            perspective: 60px;
+            transition: transform 0.5s cubic-bezier(.68,-0.55,.27,1.55);
+        }
+        .theme-toggle-btn-modern.dark .theme-icon-flip {
+            transform: rotateY(180deg);
+        }
+        #themeIconMoon, #themeIconSun {
+            position: absolute; left: 0; top: 0;
+            width: 100%; height: 100%;
+            transition: opacity 0.3s;
+        }
+        .theme-toggle-btn-modern.dark #themeIconMoon { opacity: 0; }
+        .theme-toggle-btn-modern.dark #themeIconSun { opacity: 1; }
+        #themeIconMoon { opacity: 1; }
+        #themeIconSun { opacity: 0; color: #f7d51d; }
+
+        .notif-btn-modern {
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 44px; height: 44px;
+            box-shadow: 0 2px 8px rgba(60,60,60,0.08);
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s, transform 0.18s;
+            position: relative;
+        }
+        .notif-btn-modern:active { transform: scale(0.92) rotate(-10deg);}
+        .notif-btn-modern:hover {
+            box-shadow: 0 4px 16px #fa525244, 0 0 8px #fa525288;
+            transform: scale(1.08);
+        }
+        .notif-btn-modern .fa-bell {
+            animation: notif-shake 1.2s infinite alternate;
+        }
+        @keyframes notif-shake {
+            0% { transform: rotate(0deg);}
+            20% { transform: rotate(-10deg);}
+            40% { transform: rotate(10deg);}
+            60% { transform: rotate(-6deg);}
+            80% { transform: rotate(6deg);}
+            100% { transform: rotate(0deg);}
+        }
+        .notif-badge-modern {
+            animation: notif-pulse 1.2s infinite;
+        }
+        @keyframes notif-pulse {
+            0% { box-shadow: 0 0 0 0 #fa525288;}
+            70% { box-shadow: 0 0 0 8px #fa525200;}
+            100% { box-shadow: 0 0 0 0 #fa525200;}
+        }
+        .notif-dropdown-modern {
+            backdrop-filter: blur(8px);
+            background: rgba(255,255,255,0.95);
+            border-radius: 14px;
+            box-shadow: 0 8px 32px #5c7cfa22;
+            border: none;
+        }
+
+        .avatar-btn-modern {
+            background: none;
+            border: none;
+            border-radius: 50%;
+            width: 44px; height: 44px;
+            box-shadow: 0 2px 8px rgba(60,60,60,0.08);
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s, transform 0.18s;
+            overflow: hidden;
+            position: relative;
+        }
+        .avatar-btn-modern:active { transform: scale(0.92);}
+        .avatar-btn-modern:hover {
+            box-shadow: 0 4px 16px #51cf6644, 0 0 8px #51cf6688;
+            transform: scale(1.08);
+        }
+        .avatar-gradient {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5c7cfa 0%, #51cf66 100%);
+            color: #fff;
+            transition: background 0.3s, color 0.3s;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            box-shadow: 0 2px 8px #5c7cfa22;
+            animation: avatar-pop 0.7s;
+        }
+        @keyframes avatar-pop {
+            0% { transform: scale(0.7);}
+            80% { transform: scale(1.1);}
+            100% { transform: scale(1);}
+        }
+        .awesomplete {
+            width: 100%;
+            z-index: 9999;
+        }
+        .awesomplete ul {
+            background: var(--bs-light, #fff);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
+        }
+        .awesomplete li[aria-selected="true"] {
+            background: linear-gradient(90deg, #4f8cff 0%, #6ed6ff 100%);
+            color: #fff;
+        }
+        .form-control.is-valid {
+            border-color: #198754;
+            box-shadow: 0 0 0 0.2rem rgba(25,135,84,.25);
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.2rem rgba(220,53,69,.15);
+        }
+        .form-text {
+            font-size: 0.95em;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-2px); }
+            40% { transform: translateX(2px); }
+            60% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+            100% { transform: translateX(0);}
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79,140,255,0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(79,140,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(79,140,255,0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-layer-group"></i><span>Sistema</span>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Colapsar menú"><i class="fas fa-bars"></i></button>
+        </div>
+        <div class="nav flex-column">
+            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}"><i class="fas fa-home"></i><span>Inicio</span></a>
+            <a class="nav-link {% if request.endpoint == 'estadisticas' %}active{% endif %}" href="{{ url_for('estadisticas') }}"><i class="fas fa-chart-bar"></i><span>Estadísticas</span></a>
+            <a class="nav-link {% if request.endpoint == 'tareas.listar_tareas' %}active{% endif %}" href="{{ url_for('tareas.listar_tareas') }}"><i class="fas fa-tasks"></i><span>Tareas</span></a>
+            <a class="nav-link {% if request.endpoint == 'equipos' %}active{% endif %}" href="{{ url_for('equipos') }}"><i class="fas fa-users"></i><span>Equipos</span></a>
+            <a class="nav-link {% if request.endpoint == 'competencias' %}active{% endif %}" href="{{ url_for('competencias') }}"><i class="fas fa-lightbulb"></i><span>Competencias</span></a>
+            <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
+            {% if current_user.rol == 'jefe' %}
+            <a class="nav-link {% if request.endpoint == 'jefes' %}active{% endif %}" href="{{ url_for('jefes') }}"><i class="fas fa-user-shield"></i><span>Jefes</span></a>
+            {% endif %}
+        </div>
+        <div class="sidebar-footer mt-auto">
+            <span>&copy; 2024</span>
+        </div>
+    </nav>
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="navbar-top d-flex justify-content-between align-items-center px-3 py-2 bg-white shadow-sm" style="min-height:56px;">
+            <span class="navbar-title fw-bold fs-5"><i class="fas fa-users"></i> Sistema de Empleados</span>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Modo Oscuro/Claro -->
+                <button id="themeToggle" class="btn theme-toggle-btn-modern" title="Cambiar a modo oscuro">
+                    <span class="theme-icon-flip">
+                        <i id="themeIconMoon" class="fas fa-moon fa-lg"></i>
+                        <i id="themeIconSun" class="fas fa-sun fa-lg"></i>
+                    </span>
+                </button>
+                <!-- Notificaciones -->
+                <div class="dropdown">
+                    <button class="btn notif-btn-modern position-relative" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notificaciones">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span class="notif-badge-modern position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount">3</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end notif-dropdown-modern animate__animated animate__fadeIn" aria-labelledby="notifDropdown" style="min-width: 320px; max-height: 350px; overflow-y: auto;">
+                        <li class="dropdown-header fw-bold">Notificaciones recientes</li>
+                        <li><span class="dropdown-item-text text-muted">No tienes notificaciones nuevas.</span></li>
+                    </ul>
+                </div>
+                <!-- Avatar Usuario -->
+                <div class="dropdown">
+                    <button class="btn avatar-btn-modern p-0" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="width: 44px; height: 44px;">
+                        <span class="avatar-gradient d-flex align-items-center justify-content-center w-100 h-100 fw-bold" style="font-size:1.2rem;">
+                            {{ (current_user.nombre[0] ~ current_user.apellido[0])|upper if current_user.is_authenticated else '' }}
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow animate__animated animate__fadeIn" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('perfil') }}"><i class="fas fa-user-circle me-2"></i>Mi perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid-custom">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} custom-flash alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {% block contenido %}{% endblock %}
+        </div>
+        <footer class="footer mt-5">
+            <div class="container">
+                <p class="mb-0">
+                    <i class="fas fa-code"></i> Sistema de Gestión de Empleados &copy; 2024
+                </p>
+            </div>
+        </footer>
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Tema oscuro -->
+    <script src="{{ url_for('static', filename='dark_mode.js') }}"></script>
+    <!-- Animaciones y microinteracciones -->
+    <script src="{{ url_for('static', filename='animations.js') }}"></script>
+    <!-- jQuery (requerido por DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- ApexCharts JS -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js"></script>
+    <!-- Chart.js JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    {% block scripts %}{% endblock %}
+    <script>
+        // Sidebar toggle
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('collapsed');
+        });
+    </script>
+    <!-- Contenedor de toasts -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <div id="toastContainer"></div>
+    </div>
+    <script>
+    // Función para mostrar toasts de Bootstrap
+    function showToast(message, type = 'success') {
+        const toastId = 'toast-' + Date.now();
+        const icon = type === 'success' ? 'fa-check-circle' : (type === 'danger' ? 'fa-times-circle' : 'fa-info-circle');
+        const bg = type === 'success' ? 'bg-success' : (type === 'danger' ? 'bg-danger' : 'bg-info');
+        const html = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bg} border-0 animate__animated animate__fadeInUp" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3500">
+          <div class="d-flex">
+            <div class="toast-body"><i class="fas ${icon} me-2"></i>${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>`;
+        document.getElementById('toastContainer').insertAdjacentHTML('beforeend', html);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+    // Ejemplo: showToast('¡Cambios guardados con éxito!', 'success');
+    </script>
+
+    <!-- Modal obligatorio de habilidades y fortalezas -->
+    {% if current_user.is_authenticated and current_user.rol in ['lider', 'practicante'] %}
+    <div class="modal fade" id="modalHabilidadesFortalezas" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalHabilidadesFortalezasLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalHabilidadesFortalezasLabel">
+                        <i class="fas fa-exclamation-circle me-2"></i>Completar Perfil
+                    </h5>
+                </div>
+                <form id="formHabilidadesFortalezas" method="POST" action="{{ url_for('actualizar_competencias', id=current_user.id) }}">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Por favor, complete sus habilidades y fortalezas para continuar.
+                        </div>
+                        <div class="mb-3">
+                            <label for="modal_habilidades" class="form-label">Habilidades</label>
+                            <input type="text" class="form-control" id="modal_habilidades" name="habilidades" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}" required>
+                            <div class="form-text">Escribe y selecciona habilidades existentes o nuevas. Separa con coma.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modal_fortalezas" class="form-label">Fortalezas</label>
+                            <input type="text" class="form-control" id="modal_fortalezas" name="fortalezas" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}" required>
+                            <div class="form-text">Agrega fortalezas personales o selecciona sugeridas. Separa con coma.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+    // Inicializar Awesomplete para campos múltiples en el modal
+    function initAwesompleteMulti(id) {
+        var input = document.getElementById(id);
+        if (!input) return;
+        var list = input.getAttribute('data-list').split(',');
+        new Awesomplete(input, {
+            list: list,
+            minChars: 1,
+            autoFirst: true,
+            filter: function(text, input) {
+                var terms = input.split(',');
+                return Awesomplete.FILTER_CONTAINS(text, terms[terms.length-1].trim());
+            },
+            item: function(text, input) {
+                var terms = input.split(',');
+                return Awesomplete.ITEM(text, terms[terms.length-1].trim());
+            },
+            replace: function(text) {
+                var before = this.input.value.split(',');
+                before.pop();
+                this.input.value = before.join(', ') + (before.length ? ', ' : '') + text + ', ';
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        initAwesompleteMulti('modal_habilidades');
+        initAwesompleteMulti('modal_fortalezas');
+        // Validación visual en tiempo real
+        ['modal_habilidades','modal_fortalezas'].forEach(function(id) {
+            var input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', function() {
+                    if (input.value.trim().length > 0) {
+                        input.classList.remove('is-invalid');
+                        input.classList.add('is-valid');
+                    } else {
+                        input.classList.remove('is-valid');
+                        input.classList.add('is-invalid');
+                    }
+                });
+            }
+        });
+    });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modo oscuro/claro con flip
+        const themeToggle = document.getElementById('themeToggle');
+        let darkMode = localStorage.getItem('darkMode') === 'true';
+        function setTheme(dark) {
+            document.body.classList.toggle('dark-mode', dark);
+            themeToggle.classList.toggle('dark', dark);
+            localStorage.setItem('darkMode', dark);
+        }
+        setTheme(darkMode);
+        themeToggle.addEventListener('click', () => {
+            darkMode = !darkMode;
+            setTheme(darkMode);
+        });
+        // Simulación de animación de badge de notificaciones
+        setTimeout(() => {
+            const badge = document.getElementById('notifCount');
+            if (badge) {
+                badge.classList.add('animate__bounceIn');
+                setTimeout(() => badge.classList.remove('animate__bounceIn'), 1200);
+            }
+        }, 1000);
+    });
+    </script>
+    <!-- Awesomplete JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
+</body>
+</html>

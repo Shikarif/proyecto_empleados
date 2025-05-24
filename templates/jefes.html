@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-user-shield"></i> Jefes del Sistema</h4>
+            <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#modalCrearEquipo">
+                <i class="fas fa-users-cog me-2"></i>Crear equipo
+            </button>
+        </div>
+        <div class="card-body">
+            {% if jefes %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Correo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jefe in jefes %}
+                        <tr>
+                            <td>{{ jefe[1] }}</td>
+                            <td>{{ jefe[2] }}</td>
+                            <td>{{ jefe[3] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No hay jefes registrados.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Equipos sin líder -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-exclamation-triangle me-2"></i>Equipos sin Líder</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for equipo in equipos if not equipo.tiene_lider %}
+                        <tr>
+                            <td>{{ equipo.nombre }}</td>
+                            <td class="d-flex gap-2">
+                                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarLider" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
+                                    <i class="fas fa-user-plus"></i> Asignar Líder
+                                </button>
+                                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarEquipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <form method="POST" action="{{ url_for('eliminar_equipo', id=equipo.id) }}" class="d-inline-block" onsubmit="return confirm('¿Seguro que deseas eliminar este equipo?');">
+                                    <button class="btn btn-danger btn-sm" type="submit" {% if equipo.total_miembros > 0 %}disabled title="No se puede eliminar un equipo con miembros"{% endif %}>
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Equipo -->
+<div class="modal fade" id="modalCrearEquipo" tabindex="-1" aria-labelledby="modalCrearEquipoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="formCrearEquipo" method="POST" action="{{ url_for('crear_equipo_jefe') }}">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="modalCrearEquipoLabel"><i class="fas fa-users-cog me-2"></i>Crear Nuevo Equipo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="nombreEquipo" class="form-label">Nombre del Equipo</label>
+            <input type="text" class="form-control form-control-lg" id="nombreEquipo" name="nombre" required maxlength="100" placeholder="Ej: Equipo Innovación">
+          </div>
+          <div class="mb-3">
+            <label for="miembrosEquipo" class="form-label">Seleccionar miembros (líderes/practicantes)</label>
+            <select class="form-select" id="miembrosEquipo" name="miembros[]" multiple style="min-height: 120px;">
+              {% for usuario in usuarios_disponibles %}
+                <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+              {% endfor %}
+            </select>
+            <small class="text-muted">Ctrl+Click para seleccionar varios. Solo se muestran líderes y practicantes sin equipo.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-save me-2"></i>Crear Equipo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Asignar Líder -->
+<div class="modal fade" id="modalAsignarLider" tabindex="-1" aria-labelledby="modalAsignarLiderLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formAsignarLider" method="POST" action="{{ url_for('asignar_lider') }}">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title" id="modalAsignarLiderLabel"><i class="fas fa-user-plus me-2"></i>Asignar Líder a <span id="equipoNombreModal"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="equipo_id" id="equipoIdModal">
+          <div class="mb-3">
+            <label for="lider_id" class="form-label">Seleccionar líder disponible</label>
+            <select class="form-select" id="lider_id" name="lider_id" required>
+              <option value="">Seleccione un líder</option>
+              {% for lider in lideres_disponibles %}
+                <option value="{{ lider.id }}">{{ lider.nombre }} {{ lider.apellido }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning"><i class="fas fa-save me-2"></i>Asignar Líder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Equipo -->
+<div class="modal fade" id="modalEditarEquipo" tabindex="-1" aria-labelledby="modalEditarEquipoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="formEditarEquipo" method="POST" action="{{ url_for('editar_equipo') }}">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="modalEditarEquipoLabel"><i class="fas fa-edit me-2"></i>Editar Equipo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="equipo_id" id="editarEquipoId">
+          <div class="mb-3">
+            <label for="editarNombreEquipo" class="form-label">Nombre del Equipo</label>
+            <input type="text" class="form-control form-control-lg" id="editarNombreEquipo" name="nombre" required maxlength="100">
+          </div>
+          <div class="mb-3">
+            <label for="editarLiderEquipo" class="form-label">Asignar líder</label>
+            <select class="form-select" id="editarLiderEquipo" name="lider_id">
+              <option value="">Sin líder</option>
+              {% for lider in lideres_disponibles %}
+                <option value="{{ lider.id }}">{{ lider.nombre }} {{ lider.apellido }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editarMiembrosEquipo" class="form-label">Miembros (líderes/practicantes)</label>
+            <select class="form-select" id="editarMiembrosEquipo" name="miembros[]" multiple style="min-height: 120px;">
+              {% for usuario in usuarios_disponibles %}
+                <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+              {% endfor %}
+            </select>
+            <small class="text-muted">Ctrl+Click para seleccionar varios.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-info"><i class="fas fa-save me-2"></i>Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Pasar datos al modal de asignar líder
+const modalAsignarLider = document.getElementById('modalAsignarLider');
+if (modalAsignarLider) {
+  modalAsignarLider.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const equipoId = button.getAttribute('data-equipo-id');
+    const equipoNombre = button.getAttribute('data-equipo-nombre');
+    document.getElementById('equipoIdModal').value = equipoId;
+    document.getElementById('equipoNombreModal').textContent = equipoNombre;
+  });
+}
+
+// Pasar datos al modal de editar equipo
+const modalEditarEquipo = document.getElementById('modalEditarEquipo');
+if (modalEditarEquipo) {
+  modalEditarEquipo.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const equipoId = button.getAttribute('data-equipo-id');
+    const equipoNombre = button.getAttribute('data-equipo-nombre');
+    document.getElementById('editarEquipoId').value = equipoId;
+    document.getElementById('editarNombreEquipo').value = equipoNombre;
+    // Opcional: podrías cargar miembros actuales vía AJAX y seleccionarlos
+  });
+}
+</script>
+
+{% block scripts %}
+<script>
+// Mejorar select múltiple con búsqueda si se desea (puedes integrar select2.js para mejor UX)
+</script>
+{% endblock %}
+{% endblock %} 

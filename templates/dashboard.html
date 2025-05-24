@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid">
+    <!-- KPIs de tracking real -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-primary text-white text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-users"></i></div>
+                    <div class="kpi-label">Usuarios Logueados</div>
+                    <div class="kpi-value" id="kpi-empleados">{{ total_activos }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-success text-white text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-user-tie"></i></div>
+                    <div class="kpi-label">Jefes Logueados</div>
+                    <div class="kpi-value" id="kpi-jefes">{{ roles_activos.get('jefe', 0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-info text-white text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-user-cog"></i></div>
+                    <div class="kpi-label">Líderes Logueados</div>
+                    <div class="kpi-value" id="kpi-lideres">{{ roles_activos.get('lider', 0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-warning text-dark text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-user-graduate"></i></div>
+                    <div class="kpi-label">Practicantes Logueados</div>
+                    <div class="kpi-value" id="kpi-practicantes">{{ roles_activos.get('practicante', 0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-secondary text-white text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-users-cog"></i></div>
+                    <div class="kpi-label">Total Empleados</div>
+                    <div class="kpi-value">{{ total_empleados }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="card shadow-lg border-0 kpi-widget gradient-dark text-white text-center animate__animated animate__fadeInDown">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2"><i class="fas fa-layer-group"></i></div>
+                    <div class="kpi-label">Total Equipos</div>
+                    <div class="kpi-value">{{ total_equipos }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs de tareas -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0 text-center">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2 text-success"><i class="fas fa-check-circle"></i></div>
+                    <div class="kpi-label">Tareas Completadas</div>
+                    <div class="kpi-value text-success">{{ tareas_completadas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0 text-center">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2 text-warning"><i class="fas fa-tasks"></i></div>
+                    <div class="kpi-label">Tareas Pendientes</div>
+                    <div class="kpi-value text-warning">{{ tareas_pendientes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0 text-center">
+                <div class="card-body">
+                    <div class="kpi-icon mb-2 text-info"><i class="fas fa-list"></i></div>
+                    <div class="kpi-label">Total Tareas</div>
+                    <div class="kpi-value text-info">{{ total_tareas }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos compactos -->
+    <div class="row g-4 mb-4">
+        <!-- Widget de tareas más recientes en vez de gráfico por mes -->
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-clock me-2"></i>Tareas más recientes</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Estado</th>
+                                    <th>Asignado</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tarea in tareas_recientes %}
+                                <tr>
+                                    <td>{{ tarea.titulo }}</td>
+                                    <td><span class="badge bg-{% if tarea.estado == 'completada' %}success{% elif tarea.estado == 'pendiente' %}warning{% else %}secondary{% endif %}">{{ tarea.estado|capitalize }}</span></td>
+                                    <td>{{ tarea.asignado_nombre or 'Sin asignar' }}</td>
+                                    <td>{{ tarea.fecha_creacion.strftime('%d/%m/%Y') if tarea.fecha_creacion else '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Gráfico de distribución de roles -->
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-chart-pie me-2"></i>Distribución de Roles</div>
+                <div class="card-body">
+                    <canvas id="rolesPieChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Gráfico de eficiencia por equipo -->
+        <div class="col-md-4 col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-chart-bar me-2"></i>Eficiencia por Equipo</div>
+                <div class="card-body">
+                    <canvas id="eficienciaEquipoChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking de equipos -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-gradient-info text-white fw-bold"><i class="fas fa-trophy me-2"></i>Ranking de Equipos</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Equipo</th>
+                                    <th>Eficiencia (%)</th>
+                                    <th>Tareas Completadas</th>
+                                    <th>Total Tareas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for equipo in ranking_equipos %}
+                                <tr>
+                                    <td>{{ equipo.nombre }}</td>
+                                    <td>{{ equipo.eficiencia }}</td>
+                                    <td>{{ equipo.tareas_completadas }}</td>
+                                    <td>{{ equipo.total_tareas }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-gradient-secondary text-white fw-bold"><i class="fas fa-user-plus me-2"></i>Últimos Empleados Registrados</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Equipo</th>
+                                    <th>Fecha Registro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in ultimos_empleados %}
+                                <tr>
+                                    <td>{{ emp.nombre }} {{ emp.apellido }}</td>
+                                    <td>{{ emp.rol|capitalize }}</td>
+                                    <td>{{ emp.equipo or 'Sin equipo' }}</td>
+                                    <td>{{ emp.fecha_registro.strftime('%d/%m/%Y') if emp.fecha_registro else '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de distribución de roles
+    new Chart(document.getElementById('rolesPieChart').getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: ['Líderes', 'Practicantes'],
+            datasets: [{
+                data: [{{ roles_stats.get('lider', 0) }}, {{ roles_stats.get('practicante', 0) }}],
+                backgroundColor: ['#51cf66', '#fcc419']
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } },
+            responsive: true
+        }
+    });
+    // Gráfico de eficiencia por equipo
+    new Chart(document.getElementById('eficienciaEquipoChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ nombres_equipos|tojson|safe }},
+            datasets: [{
+                label: 'Eficiencia (%)',
+                data: {{ eficiencia_equipos|tojson|safe }},
+                backgroundColor: '#3b3f5c',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            indexAxis: 'y',
+            responsive: true,
+            scales: { x: { beginAtZero: true, max: 100 } }
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

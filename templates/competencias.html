@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="container mt-4">
+    <h2>Competencias de los Empleados</h2>
+    <div class="table-responsive mt-4">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Equipo</th>
+                    <th>Rol</th>
+                    <th>Habilidades</th>
+                    <th>Fortalezas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in empleados %}
+                <tr>
+                    <td>{{ emp.nombre }} {{ emp.apellido }}</td>
+                    <td>{{ emp.equipo or 'No asignado' }}</td>
+                    <td>{{ emp.rol|capitalize }}</td>
+                    <td>
+                        {% for h in emp.habilidades %}
+                            <span class="badge bg-info">{{ h }}</span>
+                        {% else %}
+                            <span class="text-muted">Sin habilidades</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for f in emp.fortalezas %}
+                            <span class="badge bg-success">{{ f }}</span>
+                        {% else %}
+                            <span class="text-muted">Sin fortalezas</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ emp.id }}">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                    </td>
+                </tr>
+                <!-- Modal de edición de competencias -->
+                <div class="modal fade" id="modalEditar{{ emp.id }}" tabindex="-1" aria-labelledby="modalEditarLabel{{ emp.id }}" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="POST" action="{{ url_for('editar_competencias', id=emp.id) }}">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="modalEditarLabel{{ emp.id }}">Editar Competencias de {{ emp.nombre }} {{ emp.apellido }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="mb-3">
+                            <label for="habilidades{{ emp.id }}" class="form-label">Habilidades</label>
+                            <select class="form-select" id="habilidades{{ emp.id }}" name="habilidades[]" multiple>
+                              {% for h in habilidades_globales %}
+                                <option value="{{ h.id }}" {% if h.nombre in emp.habilidades %}selected{% endif %}>{{ h.nombre }}</option>
+                              {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click para seleccionar varias.</small>
+                          </div>
+                          <div class="mb-3">
+                            <label for="fortalezas{{ emp.id }}" class="form-label">Fortalezas</label>
+                            <select class="form-select" id="fortalezas{{ emp.id }}" name="fortalezas[]" multiple>
+                              {% for f in fortalezas_globales %}
+                                <option value="{{ f.id }}" {% if f.nombre in emp.fortalezas %}selected{% endif %}>{{ f.nombre }}</option>
+                              {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click para seleccionar varias.</small>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,314 @@
+:root {
+    --bg-color: #f8f9fa;
+    --text-color: #232946;
+    --card-bg: #fff;
+    --card-border: #dee2e6;
+    --navbar-bg: #2c3e50;
+    --navbar-text: #fff;
+    --table-bg: #fff;
+    --table-border: #dee2e6;
+    --input-bg: #fff;
+    --input-border: #ced4da;
+    --accent: #3e7bfa;
+    --secondary-text: #6c757d;
+    --footer-bg: #2c3e50;
+    --dropdown-bg: #fff;
+    --dropdown-text: #232946;
+    --alert-bg: #e9ecef;
+    --alert-text: #232946;
+    --badge-bg: #3e7bfa;
+    --badge-text: #fff;
+}
+
+body.dark-mode {
+    --bg-color: #181c2a;
+    --text-color: #f4f4f4;
+    --card-bg: #232946;
+    --card-border: #2e3657;
+    --navbar-bg: #232946;
+    --navbar-text: #f4f4f4;
+    --table-bg: #232946;
+    --table-border: #2e3657;
+    --input-bg: #232946;
+    --input-border: #2e3657;
+    --accent: #3e7bfa;
+    --secondary-text: #b8bcd1;
+    --footer-bg: #232946;
+    --dropdown-bg: #232946;
+    --dropdown-text: #f4f4f4;
+    --alert-bg: #232946;
+    --alert-text: #f4f4f4;
+    --badge-bg: #3e7bfa;
+    --badge-text: #fff;
+}
+
+body {
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    transition: background 0.3s, color 0.3s;
+}
+
+.navbar {
+    background-color: var(--navbar-bg) !important;
+    color: var(--navbar-text) !important;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.navbar .navbar-brand, .navbar .nav-link, .navbar .nav-link.disabled {
+    color: var(--navbar-text) !important;
+}
+
+.navbar .nav-link.active, .navbar .nav-link:hover {
+    background: rgba(62,123,250,0.12) !important;
+    color: var(--accent) !important;
+}
+
+.dropdown-menu {
+    background-color: var(--dropdown-bg) !important;
+    color: var(--dropdown-text) !important;
+    border: 1px solid var(--card-border) !important;
+}
+
+.dropdown-item {
+    color: var(--dropdown-text) !important;
+}
+
+.dropdown-item:hover, .dropdown-item.active {
+    background-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+.card, .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--card-border) !important;
+    box-shadow: 0 4px 16px rgba(24,28,42,0.10);
+}
+
+.card-header, .modal-header {
+    background-color: var(--card-bg) !important;
+    border-bottom: 1px solid var(--card-border) !important;
+    color: var(--text-color) !important;
+}
+
+.table {
+    background-color: var(--table-bg) !important;
+    color: var(--text-color) !important;
+}
+
+.table thead th {
+    background-color: var(--navbar-bg) !important;
+    color: var(--navbar-text) !important;
+    border: none;
+}
+
+.table tbody tr {
+    background-color: var(--table-bg) !important;
+    transition: background 0.2s;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #20243a !important;
+}
+
+body.dark-mode .table tbody tr:nth-child(even) {
+    background-color: #232946 !important;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(62,123,250,0.10) !important;
+}
+
+.table td, .table th {
+    border-color: var(--table-border) !important;
+}
+
+.form-control, .form-select {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--input-border) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 0.2rem rgba(62,123,250,0.15);
+}
+
+.btn, .btn-primary, .btn-success, .btn-warning, .btn-danger, .btn-info, .btn-secondary {
+    border-radius: 5px;
+    transition: background 0.3s, color 0.3s;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #2556b7 !important;
+    border-color: #2556b7 !important;
+}
+
+.btn-success {
+    background-color: #2ecc71 !important;
+    color: #fff !important;
+}
+
+.btn-success:hover, .btn-success:focus {
+    background-color: #27ae60 !important;
+}
+
+.btn-warning {
+    background-color: #f1c40f !important;
+    color: #232946 !important;
+}
+
+.btn-warning:hover, .btn-warning:focus {
+    background-color: #d4ac0d !important;
+}
+
+.btn-danger {
+    background-color: #e74c3c !important;
+    color: #fff !important;
+}
+
+.btn-danger:hover, .btn-danger:focus {
+    background-color: #c0392b !important;
+}
+
+.btn-info {
+    background-color: #00bcd4 !important;
+    color: #fff !important;
+}
+
+.btn-info:hover, .btn-info:focus {
+    background-color: #008c9e !important;
+}
+
+.btn-secondary {
+    background-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.btn-secondary:hover, .btn-secondary:focus {
+    background-color: #495057 !important;
+}
+
+.text-muted, .form-text, .secondary-text {
+    color: var(--secondary-text) !important;
+}
+
+.footer {
+    background: var(--footer-bg) !important;
+    color: var(--navbar-text) !important;
+}
+
+.alert {
+    background-color: var(--alert-bg) !important;
+    color: var(--alert-text) !important;
+    border: 1px solid var(--card-border) !important;
+}
+
+.badge, .badge.bg-primary {
+    background-color: var(--badge-bg) !important;
+    color: var(--badge-text) !important;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+    border-radius: 4px;
+}
+
+/* Forzar color de texto oscuro en modo claro para todas las filas de tablas */
+body:not(.dark-mode) table.dataTable,
+body:not(.dark-mode) table.dataTable th,
+body:not(.dark-mode) table.dataTable td,
+body:not(.dark-mode) table.dataTable tbody tr,
+body:not(.dark-mode) table.dataTable tbody td,
+body:not(.dark-mode) .table,
+body:not(.dark-mode) .table th,
+body:not(.dark-mode) .table td,
+body:not(.dark-mode) .table tbody tr,
+body:not(.dark-mode) .table tbody td {
+    color: #23263a !important;
+}
+
+/* Forzar color de texto claro en modo oscuro para todas las filas de tablas */
+body.dark-mode table.dataTable,
+body.dark-mode table.dataTable th,
+body.dark-mode table.dataTable td,
+body.dark-mode table.dataTable tbody tr,
+body.dark-mode table.dataTable tbody td,
+body.dark-mode .table,
+body.dark-mode .table th,
+body.dark-mode .table td,
+body.dark-mode .table tbody tr,
+body.dark-mode .table tbody td {
+    color: #f1f3fa !important;
+}
+
+/* Fondo y texto para filas de tablas en modo oscuro */
+body.dark-mode table.dataTable tbody tr,
+body.dark-mode .table tbody tr {
+    background-color: #232946 !important;
+    color: #f1f3fa !important;
+}
+
+/* Fondo alterno para filas pares en modo oscuro */
+body.dark-mode table.dataTable tbody tr:nth-child(even),
+body.dark-mode .table tbody tr:nth-child(even) {
+    background-color: #1a1e2e !important;
+    color: #f1f3fa !important;
+}
+
+/* Forzar color de texto en celdas */
+body.dark-mode table.dataTable td,
+body.dark-mode .table td {
+    color: #f1f3fa !important;
+}
+
+/* Solución definitiva para visibilidad en modo oscuro */
+body.dark-mode table,
+body.dark-mode .table,
+body.dark-mode table.dataTable,
+body.dark-mode .table.dataTable {
+    background-color: #232946 !important;
+    color: #f1f3fa !important;
+}
+
+body.dark-mode table th,
+body.dark-mode .table th,
+body.dark-mode table td,
+body.dark-mode .table td,
+body.dark-mode table.dataTable th,
+body.dark-mode table.dataTable td {
+    color: #f1f3fa !important;
+    background-color: #232946 !important;
+    opacity: 1 !important;
+}
+
+body.dark-mode table tbody tr,
+body.dark-mode .table tbody tr,
+body.dark-mode table.dataTable tbody tr,
+body.dark-mode .table.dataTable tbody tr {
+    background-color: #232946 !important;
+    color: #f1f3fa !important;
+    opacity: 1 !important;
+}
+
+body.dark-mode table tbody tr:nth-child(even),
+body.dark-mode .table tbody tr:nth-child(even),
+body.dark-mode table.dataTable tbody tr:nth-child(even),
+body.dark-mode .table.dataTable tbody tr:nth-child(even) {
+    background-color: #1a1e2e !important;
+    color: #f1f3fa !important;
+    opacity: 1 !important;
+} 

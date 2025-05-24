@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="container mt-4">
+    <h2>Gestión de Tareas</h2>
+    
+    <div class="row mb-3">
+        <div class="col">
+            <a href="{{ url_for('tareas.nueva_tarea') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Tarea
+            </a>
+            <a href="{{ url_for('tareas.asignar_automatico') }}" class="btn btn-success">
+                <i class="fas fa-magic"></i> Asignar Automáticamente
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Descripción</th>
+                    <th>Fecha Límite</th>
+                    <th>Prioridad</th>
+                    <th>Estado</th>
+                    <th>Horas Estimadas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tarea in tareas %}
+                <tr>
+                    <td>{{ tarea.titulo }}</td>
+                    <td>{{ tarea.descripcion }}</td>
+                    <td>{{ tarea.fecha_limite }}</td>
+                    <td>
+                        <span class="badge {% if tarea.prioridad == 'alta' %}bg-danger
+                                         {% elif tarea.prioridad == 'media' %}bg-warning
+                                         {% else %}bg-info{% endif %}">
+                            {{ tarea.prioridad }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if tarea.estado == 'completada' %}bg-success
+                                         {% elif tarea.estado == 'en_progreso' %}bg-primary
+                                         {% else %}bg-secondary{% endif %}">
+                            {{ tarea.estado }}
+                        </span>
+                    </td>
+                    <td>{{ tarea.horas_estimadas }}</td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-info">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="#" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

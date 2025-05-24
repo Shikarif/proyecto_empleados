@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="card shadow-lg border-0">
+    <div class="card-header bg-warning text-dark rounded-top">
+        <h4 class="mb-0">
+            <i class="fas fa-user-edit"></i> Editar Empleado
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate autocomplete="off">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="nombre" name="nombre" value="{{ empleado['nombre'] }}" required>
+                        <label for="nombre">Nombre</label>
+                        <div class="invalid-feedback">Por favor ingrese el nombre del empleado.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="apellido" name="apellido" value="{{ empleado['apellido'] }}" required>
+                        <label for="apellido">Apellido</label>
+                        <div class="invalid-feedback">Por favor ingrese el apellido del empleado.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="correo" name="correo" value="{{ empleado['correo'] }}" required>
+                        <label for="correo">Correo Electrónico</label>
+                        <div class="invalid-feedback">Por favor ingrese un correo electrónico válido.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="tel" class="form-control" id="telefono" name="telefono" pattern="[0-9]{9}" maxlength="9" value="{{ empleado['telefono'] }}" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        <label for="telefono">Teléfono (9 dígitos)</label>
+                        <div class="invalid-feedback">Por favor ingrese un número de teléfono válido (9 dígitos).</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="equipo_id" name="equipo_id" required>
+                            <option value="">Seleccione un equipo</option>
+                            {% for equipo in equipos %}
+                                <option value="{{ equipo.id }}" {% if empleado['equipo_id'] == equipo.id %}selected{% endif %}>{{ equipo.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="equipo_id">Equipo</label>
+                        <div class="invalid-feedback">Seleccione un equipo.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="rol" name="rol" required>
+                            {% for r in roles %}
+                                <option value="{{ r }}" {% if empleado['rol'] == r %}selected{% endif %}>{{ r|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="rol">Rol</label>
+                        <div class="invalid-feedback">Seleccione un rol.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3 position-relative">
+                        <input type="text" class="form-control" id="habilidades" name="habilidades" value="{{ empleado['habilidades'] }}" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}">
+                        <label for="habilidades">Habilidades (separadas por coma)</label>
+                        <div class="form-text">Escribe y selecciona habilidades existentes o nuevas. Separa con coma.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating mb-3 position-relative">
+                        <input type="text" class="form-control" id="fortalezas" name="fortalezas" value="{{ empleado['fortalezas'] }}" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}">
+                        <label for="fortalezas">Fortalezas (separadas por coma)</label>
+                        <div class="form-text">Agrega fortalezas personales o selecciona sugeridas. Separa con coma.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="number" class="form-control" id="horas_disponibles" name="horas_disponibles" min="1" max="168" value="{{ empleado['horas_disponibles'] }}">
+                        <label for="horas_disponibles">Horas Disponibles</label>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-3 mt-3">
+                <button type="submit" class="btn btn-warning btn-lg px-4 shadow-sm">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+// Inicializar Awesomplete para campos múltiples
+function initAwesompleteMulti(id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+    var list = input.getAttribute('data-list').split(',');
+    new Awesomplete(input, {
+        list: list,
+        minChars: 1,
+        autoFirst: true,
+        filter: function(text, input) {
+            var terms = input.split(',');
+            return Awesomplete.FILTER_CONTAINS(text, terms[terms.length-1].trim());
+        },
+        item: function(text, input) {
+            var terms = input.split(',');
+            return Awesomplete.ITEM(text, terms[terms.length-1].trim());
+        },
+        replace: function(text) {
+            var before = this.input.value.split(',');
+            before.pop();
+            this.input.value = before.join(', ') + (before.length ? ', ' : '') + text + ', ';
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    initAwesompleteMulti('habilidades');
+    initAwesompleteMulti('fortalezas');
+    // Validación visual en tiempo real
+    ['habilidades','fortalezas'].forEach(function(id) {
+        var input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', function() {
+                if (input.value.trim().length > 0) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                } else {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

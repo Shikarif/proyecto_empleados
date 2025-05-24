@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="container-fluid">
+    <!-- Skeleton loader para equipos -->
+    <div id="equiposSkeleton" class="row g-4">
+        {% for i in range(3) %}
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="skeleton-loader" style="height: 24px; width: 70%; margin-bottom: 1rem;"></div>
+                    <div class="skeleton-loader" style="height: 16px; width: 50%; margin-bottom: 0.5rem;"></div>
+                    <div class="skeleton-loader" style="height: 16px; width: 40%;"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Contenido real de equipos -->
+    <div id="equiposContent" class="row g-4" style="display: none;">
+        {% for equipo in equipos %}
+        <div class="col-md-4">
+            <div class="card h-100 animate-on-scroll equipo-card" data-equipo-id="{{ equipo.id }}" style="cursor:pointer;">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center gap-2">
+                        {{ equipo.nombre }}
+                        {% if equipo.tiene_lider %}
+                            <span class="ms-2" title="Equipo con líder"><i class="fas fa-user-tie text-success"></i></span>
+                        {% else %}
+                            <span class="ms-2" title="Equipo sin líder"><i class="fas fa-user-slash text-warning"></i></span>
+                        {% endif %}
+                        {% if equipo.total_miembros == 0 %}
+                            <span class="ms-2" title="Equipo sin miembros"><i class="fas fa-exclamation-circle text-danger"></i></span>
+                        {% endif %}
+                    </h5>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="fas fa-users"></i> {{ equipo.total_miembros }} miembros
+                        </small>
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        {# <a href="{{ url_for('ver_equipo', id=equipo.id) }}" class="btn btn-primary btn-sm">Ver Detalles</a> #}
+                        <div class="btn-group">
+                            {# <a href="{{ url_for('editar_equipo', id=equipo.id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a> #}
+                            <button onclick="eliminarEquipo({{ equipo.id }})" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Integrantes del Equipo -->
+<div class="modal fade" id="modalIntegrantesEquipo" tabindex="-1" aria-labelledby="modalIntegrantesEquipoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalIntegrantesEquipoLabel"><i class="fas fa-users me-2"></i>Integrantes del Equipo: <span id="nombreEquipoModal"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="integrantesEquipoContent">
+          <!-- Aquí se cargan los integrantes por JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Simular carga de datos
+    setTimeout(() => {
+        // Ocultar skeleton loader
+        document.getElementById('equiposSkeleton').style.display = 'none';
+        // Mostrar contenido real
+        document.getElementById('equiposContent').style.display = 'flex';
+        
+        // Mostrar mensaje flash de éxito
+        showToast('Equipos cargados con éxito', 'success');
+    }, 1500);
+
+    // Mostrar modal de integrantes al hacer click en una card
+    document.querySelectorAll('.equipo-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (e.target.closest('button')) return; // No abrir modal si se hace click en el botón de eliminar
+            const equipoId = this.getAttribute('data-equipo-id');
+            const equipoNombre = this.querySelector('.card-title').textContent.trim();
+            document.getElementById('nombreEquipoModal').textContent = equipoNombre;
+            // Petición AJAX para obtener integrantes
+            fetch(`/equipos/integrantes/${equipoId}`)
+                .then(res => res.json())
+                .then(data => {
+                    let html = '';
+                    if (data.integrantes.length > 0) {
+                        html += '<ul class="list-group">';
+                        data.integrantes.forEach(integrante => {
+                            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-user me-2"></i>${integrante.nombre} ${integrante.apellido} <span class="badge bg-secondary ms-2">${integrante.rol}</span></span>
+                                <span class="text-muted small">${integrante.correo}</span>
+                            </li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html = '<div class="alert alert-info">Este equipo no tiene integrantes.</div>';
+                    }
+                    document.getElementById('integrantesEquipoContent').innerHTML = html;
+                    new bootstrap.Modal(document.getElementById('modalIntegrantesEquipo')).show();
+                });
+        });
+    });
+});
+
+function eliminarEquipo(id) {
+    if (confirm('¿Estás seguro de que deseas eliminar este equipo?')) {
+        fetch(`/equipos/eliminar/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Equipo eliminado con éxito', 'success');
+                // Recargar la página después de un breve delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast('Error al eliminar el equipo', 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('Error al eliminar el equipo', 'danger');
+        });
+    }
+}
+</script>
+{% endblock %}
+{% endblock %} 

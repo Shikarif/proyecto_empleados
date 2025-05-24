@@ -1,0 +1,84 @@
+MEJORAS PENDIENTES Y SUGERENCIAS
+================================
+
+Próximos Pasos
+1- Implementar Tema Oscuro/Claro: LISTO
+Añadir un switch en la interfaz.
+Crear estilos CSS para modo oscuro y claro.
+2. Crear Dashboard Personalizado: LISTO
+Diseñar widgets básicos.
+Integrar con la base de datos para datos en tiempo real.
+3. Sistema de Búsqueda Avanzada: LISTO
+Implementar filtros en el backend.
+Crear una interfaz de búsqueda en el frontend.
+4. Exportación de Datos:
+Usar librerías como reportlab para PDF o openpyxl para Excel.
+5. Gestión de Roles:
+Definir roles y permisos.
+Implementar lógica de autorización.
+6. Tiempo Real:
+Añadir campos de tiempo en tareas.
+Implementar temporizador simple.
+7. Chat Integrado:
+Configurar WebSockets con Flask-SocketIO.
+Crear interfaz de chat.
+8. Reportes Personalizados:
+Crear endpoints para reportes.
+Implementar filtros y exportación.
+
+-----------------------------------------------
+
+Implementaciones a mejorar:
+
+
+-----------------------------------------------
+
+LISTO 1. Notificaciones visuales y alertas
+Toasts para avisos de éxito/error (por ejemplo, al editar o eliminar).
+Campana de notificaciones en la navbar con historial de eventos recientes (tareas asignadas, cambios de equipo, etc).
+
+LISTO 2. Perfil de usuario y personalización
+Página de perfil con edición de datos personales, cambio de contraseña y avatar.
+Opción para elegir color/acento del sistema (personalización visual).
+
+LISTO 3. Animaciones y microinteracciones
+Animaciones suaves al mostrar/ocultar cards, tablas y formularios.
+Skeleton loaders (efecto de carga) en tablas y widgets cuando hay espera.
+Efectos de hover más notorios en botones y cards.
+
+LISTO 4. Mejoras en tablas y filtros
+Búsqueda y filtrado en tiempo real en todas las tablas.
+Ordenamiento por columnas.
+Paginación visual para grandes volúmenes de datos.
+
+LISTO 5. Dashboard avanzado
+Gráficas comparativas (por ejemplo, tareas completadas por mes, eficiencia por equipo).
+Ranking de equipos o practicantes (gamificación).
+Widgets de productividad (porcentaje de avance semanal, objetivos, etc).
+
+6. Mejoras en formularios
+Inputs con autocompletado (por ejemplo, habilidades, fortalezas).
+Validación visual en tiempo real (sin recargar la página).
+Mensajes de ayuda contextuales.
+
+7. Integraciones y exportaciones
+Exportar datos a Excel/CSV desde cualquier tabla.
+Integración con Google Calendar para fechas límite de tareas.
+Envío de reportes automáticos por correo.
+
+-----------------------------------------------
+
+
+Qué falta o podríamos abordar en las últimas etapas?
+1 Pulido final de UX/UI
+Ajustes menores de diseño, responsividad, detalles visuales.
+Mejorar mensajes de error/éxito y feedback al usuario.
+2 Notificaciones reales
+Integrar notificaciones dinámicas (por ejemplo, nuevas tareas, cambios de equipo).
+3 Pruebas y validaciones finales
+Pruebas de flujo completo (registro, login, tareas, equipos, dashboard).
+Validar seguridad y manejo de sesiones.
+4 Despliegue y optimización
+Preparar para producción: minificar assets, revisar dependencias, etc.
+
+--------------------------------

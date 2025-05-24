@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="container mt-4">
+    <h2>Nueva Tarea</h2>
+    
+    <form method="POST" class="mt-4">
+        <div class="mb-3">
+            <label for="titulo" class="form-label">Título</label>
+            <input type="text" class="form-control" id="titulo" name="titulo" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="descripcion" class="form-label">Descripción</label>
+            <textarea class="form-control" id="descripcion" name="descripcion" rows="3" required></textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="fecha_limite" class="form-label">Fecha Límite</label>
+            <input type="date" class="form-control" id="fecha_limite" name="fecha_limite" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="prioridad" class="form-label">Prioridad</label>
+            <select class="form-select" id="prioridad" name="prioridad" required>
+                <option value="baja">Baja</option>
+                <option value="media" selected>Media</option>
+                <option value="alta">Alta</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="horas_estimadas" class="form-label">Horas Estimadas</label>
+            <input type="number" class="form-control" id="horas_estimadas" name="horas_estimadas" min="1" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="habilidades_requeridas" class="form-label">Habilidades Requeridas</label>
+            <input type="text" class="form-control" id="habilidades_requeridas" name="habilidades_requeridas" 
+                   placeholder="Separadas por comas (ej: Python, SQL, HTML)">
+        </div>
+        
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Crear Tarea</button>
+            <a href="{{ url_for('tareas.listar_tareas') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 
