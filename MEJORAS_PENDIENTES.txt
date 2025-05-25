@@ -82,3 +82,18 @@ Validar seguridad y manejo de sesiones.
 Preparar para producción: minificar assets, revisar dependencias, etc.
 
 --------------------------------
+-------------------------------
+
+Mejorar el sistema del diseño de las ventanas del sistema, y las funcionalidaes PRINCIPALMENTE
+
+
+--Idea para implementacion de mejora del chat para el equipo--
+bueno regeresando a lo que seria el tema del implementacion del sistema, se me ocurre una idea 
+para poder englobar mejor esta parte, el chat global ya no seria dispensable, no le veo mucho 
+entido a esa parte, pero en cuanto a lo que es el chat de equipo si es muy fundamental, podriamos 
+hacer un apartado especial tanto para lideres y practicantes donde ellos van a poder tener interaccion 
+con el resto de su equipo, es decir que el chat de equipo es unicamente solo para que tengan interaccion 
+solo con los miembros del equipo nada mas y el jefe va poder visualizar los chats de todos los equipos 
+ara poder ver su progreso o comunicacion que es una parte muy fundamental para este proyecto, se trata 
+de tener apoyo mutuo de cada uno,  
+

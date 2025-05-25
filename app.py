@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from db_config import get_connection
 from datetime import datetime
 from tareas_routes import tareas_bp  # Importar el blueprint de tareas
@@ -8,6 +8,14 @@ from collections import Counter
 import re
 from flask_login import login_required, current_user, LoginManager, UserMixin, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
+import openpyxl
+import io
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle
+from helpers import rol_requerido
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para los mensajes flash
@@ -19,6 +27,9 @@ app.register_blueprint(tareas_bp)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Inicializar SocketIO
+socketio = SocketIO(app, async_mode='eventlet')
 
 # Modelo de usuario compatible con Flask-Login
 class Usuario(UserMixin):
@@ -652,13 +663,14 @@ def dashboard():
             total_tareas=total_tareas or 0,
             tareas_completadas=tareas_completadas or 0,
             tareas_pendientes=tareas_pendientes or 0,
-            roles_activos=roles_activos,
-            total_activos=total_activos,
-            eficiencia_equipos=eficiencia_equipos,
-            nombres_equipos=nombres_equipos,
-            ranking_equipos=ranking_equipos,
-            ultimos_empleados=ultimos_empleados,
-            tareas_recientes=tareas_recientes
+            roles_activos=roles_activos or {},
+            total_activos=total_activos or 0,
+            eficiencia_equipos=eficiencia_equipos if eficiencia_equipos else [],
+            nombres_equipos=nombres_equipos if nombres_equipos else [],
+            ranking_equipos=ranking_equipos or [],
+            ultimos_empleados=ultimos_empleados or [],
+            tareas_recientes=tareas_recientes or [],
+            total_equipos=len(nombres_equipos) if nombres_equipos else 0
         )
     
     elif rol == 'lider':
@@ -686,7 +698,7 @@ def dashboard():
                    COUNT(t.id) as total_tareas,
                    SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_completadas,
                    AVG(CASE WHEN t.estado = 'completada' THEN 
-                       TIMESTAMPDIFF(HOUR, t.fecha_creacion, t.fecha_completada)
+                       TIMESTAMPDIFF(HOUR, t.fecha_creacion, t.fechaCompletado)
                    ELSE NULL END) as tiempo_promedio
             FROM empleados e
             LEFT JOIN tareas t ON e.id = t.empleado_id
@@ -718,8 +730,14 @@ def dashboard():
             es_lider=True,
             total_tareas=0,
             tareas_completadas=0,
-            roles_activos=roles_activos,
-            total_activos=total_activos
+            roles_activos=roles_activos or {},
+            total_activos=total_activos or 0,
+            eficiencia_equipos=[],
+            nombres_equipos=[],
+            ranking_equipos=[],
+            ultimos_empleados=[],
+            tareas_recientes=[],
+            total_equipos=0
         )
     
     else:  # practicante
@@ -758,8 +776,14 @@ def dashboard():
             tareas_pendientes=tareas_pendientes or 0,
             tareas_proximas=tareas_proximas or [],
             es_practicante=True,
-            roles_activos=roles_activos,
-            total_activos=total_activos
+            roles_activos=roles_activos or {},
+            total_activos=total_activos or 0,
+            eficiencia_equipos=[],
+            nombres_equipos=[],
+            ranking_equipos=[],
+            ultimos_empleados=[],
+            tareas_recientes=[],
+            total_equipos=0
         )
     
     conexion.close()
@@ -1017,5 +1041,360 @@ def limpiar_sesiones_inactivas():
     conexion.commit()
     conexion.close()
 
+@app.route('/exportar_empleados_excel')
+@login_required
+@rol_requerido('jefe')
+def exportar_empleados_excel():
+    conexion = get_connection()
+    cursor = conexion.cursor()
+    # Obtener todos los empleados relevantes
+    cursor.execute("""
+        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, e.telefono, e.horas_disponibles, e.habilidades, e.fecha_registro
+        FROM empleados e
+        LEFT JOIN equipos eq ON e.equipo_id = eq.id
+        WHERE e.rol IN ('lider', 'practicante')
+        ORDER BY e.nombre, e.apellido
+    """)
+    empleados = cursor.fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Empleados"
+    ws.append([
+        "Nombre", "Apellido", "Correo", "Rol", "Equipo", "Teléfono", "Habilidades", "Fortalezas", "Horas Disponibles", "Fecha Registro",
+        "Tareas Asignadas", "Tareas Completadas", "Tareas Pendientes", "Prioridad Más Alta", "Títulos de Tareas"
+    ])
+
+    for emp in empleados:
+        empleado_id = emp[0]
+        habilidades, fortalezas = obtener_habilidades_fortalezas(cursor, empleado_id)
+        # Tareas asignadas
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        total_tareas = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado = 'completada'", (empleado_id,))
+        tareas_completadas = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado != 'completada'", (empleado_id,))
+        tareas_pendientes = cursor.fetchone()[0]
+        # Prioridad más alta
+        cursor.execute("SELECT prioridad FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        prioridades = [row[0] for row in cursor.fetchall()]
+        prioridad_mas_alta = 'N/A'
+        if 'alta' in prioridades:
+            prioridad_mas_alta = 'alta'
+        elif 'media' in prioridades:
+            prioridad_mas_alta = 'media'
+        elif 'baja' in prioridades:
+            prioridad_mas_alta = 'baja'
+        # Títulos de tareas
+        cursor.execute("SELECT titulo FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        titulos_tareas = ', '.join([row[0] for row in cursor.fetchall()])
+        ws.append([
+            emp[1], emp[2], emp[3], emp[4], emp[5], emp[6],
+            habilidades or emp[8] or '', fortalezas, emp[7],
+            emp[9].strftime('%d/%m/%Y') if emp[9] else '',
+            total_tareas, tareas_completadas, tareas_pendientes, prioridad_mas_alta, titulos_tareas
+        ])
+    cursor.close()
+    conexion.close()
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="empleados_completo.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route('/exportar_empleados_pdf')
+@login_required
+@rol_requerido('jefe')
+def exportar_empleados_pdf():
+    conexion = get_connection()
+    cursor = conexion.cursor()
+    cursor.execute("""
+        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, e.telefono, e.horas_disponibles, e.habilidades, e.fecha_registro
+        FROM empleados e
+        LEFT JOIN equipos eq ON e.equipo_id = eq.id
+        WHERE e.rol IN ('lider', 'practicante')
+        ORDER BY e.nombre, e.apellido
+    """)
+    empleados = cursor.fetchall()
+
+    # Encabezados
+    data = [[
+        "Nombre", "Apellido", "Correo", "Rol", "Equipo", "Teléfono", "Habilidades", "Fortalezas", "Horas Disponibles", "Fecha Registro",
+        "Tareas Asignadas", "Tareas Completadas", "Tareas Pendientes", "Prioridad Más Alta", "Títulos de Tareas"
+    ]]
+
+    for emp in empleados:
+        empleado_id = emp[0]
+        habilidades, fortalezas = obtener_habilidades_fortalezas(cursor, empleado_id)
+        # Tareas asignadas
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        total_tareas = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado = 'completada'", (empleado_id,))
+        tareas_completadas = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado != 'completada'", (empleado_id,))
+        tareas_pendientes = cursor.fetchone()[0]
+        # Prioridad más alta
+        cursor.execute("SELECT prioridad FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        prioridades = [row[0] for row in cursor.fetchall()]
+        prioridad_mas_alta = 'N/A'
+        if 'alta' in prioridades:
+            prioridad_mas_alta = 'alta'
+        elif 'media' in prioridades:
+            prioridad_mas_alta = 'media'
+        elif 'baja' in prioridades:
+            prioridad_mas_alta = 'baja'
+        # Títulos de tareas
+        cursor.execute("SELECT titulo FROM tareas WHERE empleado_id = %s", (empleado_id,))
+        titulos_tareas = ', '.join([row[0] for row in cursor.fetchall()])
+        data.append([
+            emp[1], emp[2], emp[3], emp[4], emp[5], emp[6],
+            habilidades or emp[8] or '', fortalezas, emp[7],
+            emp[9].strftime('%d/%m/%Y') if emp[9] else '',
+            total_tareas, tareas_completadas, tareas_pendientes, prioridad_mas_alta, titulos_tareas
+        ])
+    cursor.close()
+    conexion.close()
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=landscape(letter))
+    width, height = landscape(letter)
+
+    # Crear tabla
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F81BD')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+    ]))
+    table_width, table_height = table.wrapOn(c, width, height)
+    table.drawOn(c, 20, height - table_height - 40)
+    c.save()
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="empleados_completo.pdf",
+        mimetype="application/pdf"
+    )
+
+@app.route('/reportes', methods=['GET', 'POST'])
+@login_required
+def reportes():
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener filtros
+    equipos = []
+    empleados = []
+    cursor.execute("SELECT id, nombre FROM equipos ORDER BY nombre")
+    equipos = cursor.fetchall()
+    cursor.execute("SELECT id, nombre, apellido FROM empleados ORDER BY nombre")
+    empleados = cursor.fetchall()
+    # Filtros del usuario
+    equipo_id = request.args.get('equipo_id')
+    empleado_id = request.args.get('empleado_id')
+    estado = request.args.get('estado')
+    prioridad = request.args.get('prioridad')
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    # Construir consulta dinámica
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    params = []
+    if equipo_id:
+        sql += " AND eq.id = %s"
+        params.append(equipo_id)
+    if empleado_id:
+        sql += " AND e.id = %s"
+        params.append(empleado_id)
+    if estado:
+        sql += " AND t.estado = %s"
+        params.append(estado)
+    if prioridad:
+        sql += " AND t.prioridad = %s"
+        params.append(prioridad)
+    if fecha_inicio:
+        sql += " AND t.fecha_creacion >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        sql += " AND t.fecha_creacion <= %s"
+        params.append(fecha_fin)
+    sql += " ORDER BY t.fecha_creacion DESC"
+    cursor.execute(sql, tuple(params))
+    tareas = cursor.fetchall()
+    conexion.close()
+    return render_template('reportes.html', equipos=equipos, empleados=empleados, tareas=tareas, filtros={
+        'equipo_id': equipo_id, 'empleado_id': empleado_id, 'estado': estado, 'prioridad': prioridad, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin
+    })
+
+@app.route('/reportes/exportar_excel')
+@login_required
+def exportar_reporte_excel():
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener filtros igual que en /reportes
+    equipo_id = request.args.get('equipo_id')
+    empleado_id = request.args.get('empleado_id')
+    estado = request.args.get('estado')
+    prioridad = request.args.get('prioridad')
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    params = []
+    if equipo_id:
+        sql += " AND eq.id = %s"
+        params.append(equipo_id)
+    if empleado_id:
+        sql += " AND e.id = %s"
+        params.append(empleado_id)
+    if estado:
+        sql += " AND t.estado = %s"
+        params.append(estado)
+    if prioridad:
+        sql += " AND t.prioridad = %s"
+        params.append(prioridad)
+    if fecha_inicio:
+        sql += " AND t.fecha_creacion >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        sql += " AND t.fecha_creacion <= %s"
+        params.append(fecha_fin)
+    sql += " ORDER BY t.fecha_creacion DESC"
+    cursor.execute(sql, tuple(params))
+    tareas = cursor.fetchall()
+    conexion.close()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reporte Tareas"
+    ws.append(["Título", "Descripción", "Empleado", "Equipo", "Estado", "Prioridad", "Fecha Creación", "Fecha Límite", "Tiempo Estimado", "Tiempo Real"])
+    for t in tareas:
+        ws.append([
+            t['titulo'], t['descripcion'], f"{t['empleado_nombre']} {t['empleado_apellido']}", t['equipo_nombre'],
+            t['estado'], t['prioridad'],
+            t['fecha_creacion'].strftime('%d/%m/%Y') if t['fecha_creacion'] else '',
+            t['fecha_limite'].strftime('%d/%m/%Y') if t['fecha_limite'] else '',
+            t['tiempo_estimado'], t['tiempo_real']
+        ])
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return send_file(output, as_attachment=True, download_name="reporte_tareas.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.route('/reportes/exportar_pdf')
+@login_required
+def exportar_reporte_pdf():
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener filtros igual que en /reportes
+    equipo_id = request.args.get('equipo_id')
+    empleado_id = request.args.get('empleado_id')
+    estado = request.args.get('estado')
+    prioridad = request.args.get('prioridad')
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    params = []
+    if equipo_id:
+        sql += " AND eq.id = %s"
+        params.append(equipo_id)
+    if empleado_id:
+        sql += " AND e.id = %s"
+        params.append(empleado_id)
+    if estado:
+        sql += " AND t.estado = %s"
+        params.append(estado)
+    if prioridad:
+        sql += " AND t.prioridad = %s"
+        params.append(prioridad)
+    if fecha_inicio:
+        sql += " AND t.fecha_creacion >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        sql += " AND t.fecha_creacion <= %s"
+        params.append(fecha_fin)
+    sql += " ORDER BY t.fecha_creacion DESC"
+    cursor.execute(sql, tuple(params))
+    tareas = cursor.fetchall()
+    conexion.close()
+    data = [["Título", "Descripción", "Empleado", "Equipo", "Estado", "Prioridad", "Fecha Creación", "Fecha Límite", "Tiempo Estimado", "Tiempo Real"]]
+    for t in tareas:
+        data.append([
+            t['titulo'], t['descripcion'], f"{t['empleado_nombre']} {t['empleado_apellido']}", t['equipo_nombre'],
+            t['estado'], t['prioridad'],
+            t['fecha_creacion'].strftime('%d/%m/%Y') if t['fecha_creacion'] else '',
+            t['fecha_limite'].strftime('%d/%m/%Y') if t['fecha_limite'] else '',
+            t['tiempo_estimado'], t['tiempo_real']
+        ])
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=landscape(letter))
+    width, height = landscape(letter)
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F81BD')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+    ]))
+    table_width, table_height = table.wrapOn(c, width, height)
+    table.drawOn(c, 20, height - table_height - 40)
+    c.save()
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="reporte_tareas.pdf", mimetype="application/pdf")
+
+# Evento de conexión
+@socketio.on('connect')
+def handle_connect():
+    print('Usuario conectado')
+    equipo_id = None
+    try:
+        # Si el usuario está autenticado y tiene equipo
+        if current_user.is_authenticated and hasattr(current_user, 'equipo_id') and current_user.equipo_id:
+            equipo_id = str(current_user.equipo_id)
+            from flask_socketio import join_room
+            join_room(f'equipo_{equipo_id}')
+    except Exception as e:
+        print('Error al unir a sala de equipo:', e)
+    emit('usuario_conectado', {'hora': datetime.now().strftime('%H:%M')}, broadcast=True)
+
+# Evento de desconexión
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Usuario desconectado')
+    emit('usuario_desconectado', {'hora': datetime.now().strftime('%H:%M')}, broadcast=True)
+
+# Evento de mensaje global
+@socketio.on('mensaje')
+def handle_mensaje(data):
+    mensaje = data.get('mensaje', '').strip()
+    usuario = data.get('usuario', 'Invitado')
+    if not mensaje or len(mensaje) > 200:
+        return
+    hora = datetime.now().strftime('%H:%M')
+    emit('mensaje', {'usuario': usuario, 'mensaje': mensaje, 'hora': hora}, broadcast=True)
+
+# Evento de mensaje de equipo
+@socketio.on('mensaje_equipo')
+def handle_mensaje_equipo(data):
+    mensaje = data.get('mensaje', '').strip()
+    usuario = data.get('usuario', 'Invitado')
+    equipo_id = data.get('equipo_id')
+    if not mensaje or len(mensaje) > 200 or not equipo_id:
+        return
+    hora = datetime.now().strftime('%H:%M')
+    emit('mensaje_equipo', {'usuario': usuario, 'mensaje': mensaje, 'hora': hora}, room=f'equipo_{equipo_id}')
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

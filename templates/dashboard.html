@@ -11,7 +11,7 @@
                 <div class="card-body">
                     <div class="kpi-icon mb-2"><i class="fas fa-users"></i></div>
                     <div class="kpi-label">Usuarios Logueados</div>
-                    <div class="kpi-value" id="kpi-empleados">{{ total_activos }}</div>
+                    <div class="kpi-value" id="kpi-empleados">{{ total_activos or 0 }}</div>
                 </div>
             </div>
         </div>
@@ -47,7 +47,7 @@
                 <div class="card-body">
                     <div class="kpi-icon mb-2"><i class="fas fa-users-cog"></i></div>
                     <div class="kpi-label">Total Empleados</div>
-                    <div class="kpi-value">{{ total_empleados }}</div>
+                    <div class="kpi-value">{{ total_empleados or 0 }}</div>
                 </div>
             </div>
         </div>
@@ -69,7 +69,7 @@
                 <div class="card-body">
                     <div class="kpi-icon mb-2 text-success"><i class="fas fa-check-circle"></i></div>
                     <div class="kpi-label">Tareas Completadas</div>
-                    <div class="kpi-value text-success">{{ tareas_completadas }}</div>
+                    <div class="kpi-value text-success">{{ tareas_completadas or 0 }}</div>
                 </div>
             </div>
         </div>
@@ -78,7 +78,7 @@
                 <div class="card-body">
                     <div class="kpi-icon mb-2 text-warning"><i class="fas fa-tasks"></i></div>
                     <div class="kpi-label">Tareas Pendientes</div>
-                    <div class="kpi-value text-warning">{{ tareas_pendientes }}</div>
+                    <div class="kpi-value text-warning">{{ tareas_pendientes or 0 }}</div>
                 </div>
             </div>
         </div>
@@ -87,7 +87,7 @@
                 <div class="card-body">
                     <div class="kpi-icon mb-2 text-info"><i class="fas fa-list"></i></div>
                     <div class="kpi-label">Total Tareas</div>
-                    <div class="kpi-value text-info">{{ total_tareas }}</div>
+                    <div class="kpi-value text-info">{{ total_tareas or 0 }}</div>
                 </div>
             </div>
         </div>
@@ -112,9 +112,10 @@
                             </thead>
                             <tbody>
                                 {% for tarea in tareas_recientes %}
+                                {% set color = 'success' if tarea.estado == 'completada' else 'warning' if tarea.estado == 'pendiente' else 'secondary' %}
                                 <tr>
-                                    <td>{{ tarea.titulo }}</td>
-                                    <td><span class="badge bg-{% if tarea.estado == 'completada' %}success{% elif tarea.estado == 'pendiente' %}warning{% else %}secondary{% endif %}">{{ tarea.estado|capitalize }}</span></td>
+                                    <td>{{ tarea.titulo or '' }}</td>
+                                    <td><span class="badge bg-{{ color }}">{{ tarea.estado|capitalize if tarea.estado else '' }}</span></td>
                                     <td>{{ tarea.asignado_nombre or 'Sin asignar' }}</td>
                                     <td>{{ tarea.fecha_creacion.strftime('%d/%m/%Y') if tarea.fecha_creacion else '' }}</td>
                                 </tr>
@@ -164,10 +165,10 @@
                             <tbody>
                                 {% for equipo in ranking_equipos %}
                                 <tr>
-                                    <td>{{ equipo.nombre }}</td>
-                                    <td>{{ equipo.eficiencia }}</td>
-                                    <td>{{ equipo.tareas_completadas }}</td>
-                                    <td>{{ equipo.total_tareas }}</td>
+                                    <td>{{ equipo.nombre or '' }}</td>
+                                    <td>{{ equipo.eficiencia or 0 }}</td>
+                                    <td>{{ equipo.tareas_completadas or 0 }}</td>
+                                    <td>{{ equipo.total_tareas or 0 }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -193,8 +194,8 @@
                             <tbody>
                                 {% for emp in ultimos_empleados %}
                                 <tr>
-                                    <td>{{ emp.nombre }} {{ emp.apellido }}</td>
-                                    <td>{{ emp.rol|capitalize }}</td>
+                                    <td>{{ emp.nombre or '' }} {{ emp.apellido or '' }}</td>
+                                    <td>{{ emp.rol|capitalize if emp.rol else '' }}</td>
                                     <td>{{ emp.equipo or 'Sin equipo' }}</td>
                                     <td>{{ emp.fecha_registro.strftime('%d/%m/%Y') if emp.fecha_registro else '' }}</td>
                                 </tr>
@@ -209,11 +210,16 @@
 </div>
 
 {% block scripts %}
+{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Gráfico de distribución de roles
-    new Chart(document.getElementById('rolesPieChart').getContext('2d'), {
+    const ctxRoles = document.getElementById('rolesPieChart').getContext('2d');
+    if (window.rolesPieChartInstance) {
+        window.rolesPieChartInstance.destroy();
+    }
+    window.rolesPieChartInstance = new Chart(ctxRoles, {
         type: 'pie',
         data: {
             labels: ['Líderes', 'Practicantes'],
@@ -228,7 +234,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     // Gráfico de eficiencia por equipo
-    new Chart(document.getElementById('eficienciaEquipoChart').getContext('2d'), {
+    const ctxEficiencia = document.getElementById('eficienciaEquipoChart').getContext('2d');
+    if (window.eficienciaEquipoChartInstance) {
+        window.eficienciaEquipoChartInstance.destroy();
+    }
+    window.eficienciaEquipoChartInstance = new Chart(ctxEficiencia, {
         type: 'bar',
         data: {
             labels: {{ nombres_equipos|tojson|safe }},

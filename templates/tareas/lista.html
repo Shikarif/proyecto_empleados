@@ -25,6 +25,9 @@
                     <th>Prioridad</th>
                     <th>Estado</th>
                     <th>Horas Estimadas</th>
+                    <th>Tiempo Estimado (min)</th>
+                    <th>Tiempo Real (min)</th>
+                    <th>Temporizador</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -49,6 +52,21 @@
                         </span>
                     </td>
                     <td>{{ tarea.horas_estimadas }}</td>
+                    <td>{{ tarea.tiempo_estimado }}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm tiempo-real-input" value="{{ tarea.tiempo_real }}" min="0" data-tarea-id="{{ tarea.id }}" style="width:80px;display:inline-block;">
+                        <button class="btn btn-outline-secondary btn-sm guardar-tiempo-real" data-tarea-id="{{ tarea.id }}" title="Guardar tiempo real"><i class="fas fa-save"></i></button>
+                    </td>
+                    <td>
+                        <div class="temporizador-container" data-tarea-id="{{ tarea.id }}">
+                            <span class="temporizador-display badge bg-dark fs-6 px-3 py-2" id="temporizador-{{ tarea.id }}">00:00:00</span>
+                            {% if tarea.temporizador_activo %}
+                                <button class="btn btn-warning btn-sm pausar-temporizador" data-tarea-id="{{ tarea.id }}"><i class="fas fa-pause"></i> Pausar</button>
+                            {% else %}
+                                <button class="btn btn-success btn-sm iniciar-temporizador" data-tarea-id="{{ tarea.id }}"><i class="fas fa-play"></i> Iniciar</button>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td>
                         <a href="#" class="btn btn-sm btn-info">
                             <i class="fas fa-edit"></i>
@@ -63,4 +81,44 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cronómetro visual y AJAX para temporizador y tiempo real
+function pad(num) { return num.toString().padStart(2, '0'); }
+let temporizadores = {};
+
+function actualizarDisplay(tareaId, segundos) {
+    let h = Math.floor(segundos / 3600);
+    let m = Math.floor((segundos % 3600) / 60);
+    let s = segundos % 60;
+    document.getElementById('temporizador-' + tareaId).textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+// Iniciar temporizador
+$(document).on('click', '.iniciar-temporizador', function() {
+    let tareaId = $(this).data('tarea-id');
+    $.post(`/tareas/iniciar_temporizador/${tareaId}`, function(resp) {
+        if (resp.success) location.reload();
+    });
+});
+// Pausar temporizador
+$(document).on('click', '.pausar-temporizador', function() {
+    let tareaId = $(this).data('tarea-id');
+    $.post(`/tareas/pausar_temporizador/${tareaId}`, function(resp) {
+        if (resp.success) location.reload();
+    });
+});
+// Guardar tiempo real manual
+$(document).on('click', '.guardar-tiempo-real', function() {
+    let tareaId = $(this).data('tarea-id');
+    let nuevoTiempo = $(this).siblings('.tiempo-real-input').val();
+    fetch(`/tareas/actualizar_tiempo_real/${tareaId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiempo_real: nuevoTiempo })
+    }).then(r => r.json()).then(resp => { if (resp.success) location.reload(); });
+});
+</script>
 {% endblock %} 

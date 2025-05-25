@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from db_config import get_connection
 from datetime import datetime
 
@@ -24,22 +24,21 @@ def nueva_tarea():
         prioridad = request.form['prioridad']
         horas_estimadas = request.form['horas_estimadas']
         habilidades_requeridas = request.form['habilidades_requeridas']
-        
+        tiempo_estimado = request.form.get('tiempo_estimado', 0)
+        # Al crear, tiempo_real es 0, temporizador inactivo
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO tareas (titulo, descripcion, fecha_creacion, fecha_limite, 
-                              prioridad, horas_estimadas, habilidades_requeridas)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                              prioridad, horas_estimadas, habilidades_requeridas, tiempo_estimado, tiempo_real, temporizador_activo, inicio_temporizador)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (titulo, descripcion, datetime.now(), fecha_limite, 
-              prioridad, horas_estimadas, habilidades_requeridas))
+              prioridad, horas_estimadas, habilidades_requeridas, tiempo_estimado, 0, 0, None))
         conn.commit()
         cursor.close()
         conn.close()
-        
         flash('Tarea creada exitosamente', 'success')
         return redirect(url_for('tareas.listar_tareas'))
-    
     return render_template('tareas/nueva.html')
 
 # Rutas para asignación automática
@@ -117,4 +116,41 @@ def calcular_puntuacion(empleado, tarea):
     habilidades_faltantes = len(habilidades_requeridas - habilidades_empleado)
     puntuacion += habilidades_faltantes * 10
     
-    return puntuacion 
+    return puntuacion
+
+@tareas_bp.route('/tareas/iniciar_temporizador/<int:tarea_id>', methods=['POST'])
+def iniciar_temporizador(tarea_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Marcar temporizador como activo y guardar hora de inicio
+    cursor.execute('UPDATE tareas SET temporizador_activo=1, inicio_temporizador=%s WHERE id=%s', (datetime.now(), tarea_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({'success': True})
+
+@tareas_bp.route('/tareas/pausar_temporizador/<int:tarea_id>', methods=['POST'])
+def pausar_temporizador(tarea_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute('SELECT inicio_temporizador, tiempo_real FROM tareas WHERE id=%s', (tarea_id,))
+    tarea = cursor.fetchone()
+    if tarea and tarea['inicio_temporizador']:
+        tiempo_transcurrido = int((datetime.now() - tarea['inicio_temporizador']).total_seconds() // 60)
+        nuevo_tiempo_real = (tarea['tiempo_real'] or 0) + tiempo_transcurrido
+        cursor.execute('UPDATE tareas SET temporizador_activo=0, inicio_temporizador=NULL, tiempo_real=%s WHERE id=%s', (nuevo_tiempo_real, tarea_id))
+        conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({'success': True, 'tiempo_real': nuevo_tiempo_real})
+
+@tareas_bp.route('/tareas/actualizar_tiempo_real/<int:tarea_id>', methods=['POST'])
+def actualizar_tiempo_real(tarea_id):
+    nuevo_tiempo = request.json.get('tiempo_real')
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE tareas SET tiempo_real=%s WHERE id=%s', (nuevo_tiempo, tarea_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({'success': True}) 

@@ -463,6 +463,34 @@
             </div>
         </footer>
     </div>
+    <!-- Chat flotante y botón siempre presentes -->
+    <div id="chat-flotante" class="chat-flotante-modern" style="position:fixed;bottom:30px;right:30px;z-index:9999;width:440px;max-width:98vw;display:none;box-shadow:0 8px 32px #23263a33;border-radius:22px;overflow:hidden;">
+        <div class="chat-header-modern d-flex align-items-center justify-content-between px-4 py-3" style="background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff;box-shadow:0 2px 12px #23263a22;">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fas fa-comments fa-xl" style="filter:drop-shadow(0 2px 6px #23263a44);"></i>
+                <span class="fw-bold fs-5" style="letter-spacing:0.5px;">Chat institucional</span>
+            </div>
+            <button type="button" class="btn btn-light btn-sm rounded-circle p-1" title="Cerrar" style="color:var(--primary);box-shadow:0 2px 8px #23263a22;"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="chat-tabs-modern d-flex border-bottom position-relative" style="background:#f4f6fb;">
+            <button class="chat-tab-btn flex-fill py-2 border-0 bg-transparent fw-semibold position-relative" id="tab-global" style="outline:none;transition:color .2s;">Global</button>
+            <button class="chat-tab-btn flex-fill py-2 border-0 bg-transparent fw-semibold position-relative" id="tab-equipo" style="outline:none;transition:color .2s;">Equipo</button>
+            <span class="chat-tab-underline" style="position:absolute;bottom:0;left:0;width:50%;height:3px;background:var(--primary);border-radius:2px;transition:left .3s cubic-bezier(.68,-0.55,.27,1.55);z-index:2;"></span>
+        </div>
+        <div class="chat-body-modern" style="background:rgba(244,246,251,0.95);height:380px;overflow-y:auto;padding:22px 18px 16px 18px;backdrop-filter:blur(2px);">
+            <div id="chat-mensajes-global" class="chat-mensajes-modern" style="display:block;"></div>
+            <div id="chat-mensajes-equipo" class="chat-mensajes-modern" style="display:none;"></div>
+        </div>
+        <form id="form-chat-global" class="chat-form-modern d-flex align-items-center gap-2 px-4 py-3 border-top" style="background:rgba(255,255,255,0.98);backdrop-filter:blur(2px);">
+            <input type="text" id="input-chat-global" class="form-control rounded-pill px-3 shadow-sm" maxlength="200" placeholder="Escribe un mensaje..." style="background:rgba(244,246,251,0.95);border:none;">
+            <button type="submit" id="btn-enviar-chat-global" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm chat-btn-animado" style="width:46px;height:46px;transition:box-shadow .2s;" disabled><i class="fas fa-paper-plane"></i></button>
+        </form>
+        <form id="form-chat-equipo" class="chat-form-modern d-flex align-items-center gap-2 px-4 py-3 border-top" style="background:rgba(255,255,255,0.98);backdrop-filter:blur(2px);display:none;">
+            <input type="text" id="input-chat-equipo" class="form-control rounded-pill px-3 shadow-sm" maxlength="200" placeholder="Mensaje a tu equipo..." style="background:rgba(244,246,251,0.95);border:none;">
+            <button type="submit" id="btn-enviar-chat-equipo" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center shadow-sm chat-btn-animado" style="width:46px;height:46px;transition:box-shadow .2s;" disabled><i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
+    <button id="abrir-chat" class="btn btn-primary rounded-circle position-fixed" style="bottom:30px;right:30px;z-index:9998;width:60px;height:60px;display:block;"><i class="fas fa-comments fa-lg"></i><span id="badge-nuevo-chat" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">!</span></button>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Tema oscuro -->
@@ -478,7 +506,141 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js"></script>
     <!-- Chart.js JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+    // Refuerzo de seguridad para evitar errores si algún elemento no existe
+    const chatFlotante = document.getElementById('chat-flotante');
+    const abrirChat = document.getElementById('abrir-chat');
+    const badgeNuevoChat = document.getElementById('badge-nuevo-chat');
+    const chatMensajesGlobal = document.getElementById('chat-mensajes-global');
+    const chatMensajesEquipo = document.getElementById('chat-mensajes-equipo');
+    const formChatGlobal = document.getElementById('form-chat-global');
+    const inputChatGlobal = document.getElementById('input-chat-global');
+    const btnEnviarChatGlobal = document.getElementById('btn-enviar-chat-global');
+    const formChatEquipo = document.getElementById('form-chat-equipo');
+    const inputChatEquipo = document.getElementById('input-chat-equipo');
+    const btnEnviarChatEquipo = document.getElementById('btn-enviar-chat-equipo');
+    let chatAbierto = false;
+    let usuarioActual = '{{ current_user.nombre if current_user.is_authenticated else "Invitado" }}';
+    let equipoId = '{{ current_user.equipo_id if current_user.is_authenticated and current_user.equipo_id else "" }}';
+
+    // Tabs
+    const tabGlobal = document.getElementById('tab-global');
+    const tabEquipo = document.getElementById('tab-equipo');
+    const tabUnderline = document.querySelector('.chat-tab-underline');
+    function moverUnderline(tab) {
+        if (!tabUnderline) return;
+        if (tab === 'global') {
+            tabUnderline.style.left = '0';
+        } else {
+            tabUnderline.style.left = '50%';
+        }
+    }
+    if (tabGlobal && tabEquipo && formChatGlobal) {
+        tabGlobal.addEventListener('click', function() {
+            formChatGlobal.style.display = '';
+            if (formChatEquipo) formChatEquipo.style.display = 'none';
+        });
+        tabEquipo.addEventListener('click', function() {
+            formChatGlobal.style.display = 'none';
+            if (formChatEquipo) formChatEquipo.style.display = '';
+        });
+    }
+
+    function scrollChatAbajoGlobal() { if (chatMensajesGlobal) chatMensajesGlobal.scrollTop = chatMensajesGlobal.scrollHeight; }
+    function scrollChatAbajoEquipo() { if (chatMensajesEquipo) chatMensajesEquipo.scrollTop = chatMensajesEquipo.scrollHeight; }
+    function crearBurbuja(data, propio, color) {
+        return `<div class='mb-1 d-flex ${propio ? 'justify-content-end' : 'justify-content-start'}'>
+            <div class='chat-burbuja p-2 rounded-3 shadow-sm animate__animated animate__fadeIn ${color} ${propio ? 'ms-5' : 'me-5'}' style='max-width:80%;display:inline-block;'>
+                <span class='fw-bold small'>${data.usuario}</span><span class='small text-muted ms-2'>${data.hora}</span><br>
+                <span>${data.mensaje}</span>
+            </div>
+        </div>`;
+    }
+    function mostrarMensajeGlobal(data) {
+        if (!chatMensajesGlobal) return;
+        chatMensajesGlobal.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, data.usuario === usuarioActual ? 'bg-primary text-white' : 'bg-light text-dark'));
+        scrollChatAbajoGlobal();
+        if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
+    }
+    function mostrarMensajeEquipo(data) {
+        if (!chatMensajesEquipo) return;
+        chatMensajesEquipo.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, data.usuario === usuarioActual ? 'bg-success text-white' : 'bg-light text-dark'));
+        scrollChatAbajoEquipo();
+        if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
+    }
+    // Mostrar/ocultar chat flotante
+    if (chatFlotante && abrirChat) {
+        chatFlotante.style.display = 'none';
+        abrirChat.style.display = 'block';
+        abrirChat.onclick = () => {
+            chatFlotante.style.display = 'block';
+            abrirChat.style.display = 'none';
+        };
+        const btnCerrar = chatFlotante.querySelector('.btn-light');
+        if (btnCerrar) btnCerrar.onclick = () => {
+            chatFlotante.style.display = 'none';
+            abrirChat.style.display = 'block';
+        };
+    }
+
+    // SocketIO
+    if (typeof io !== 'undefined' && formChatGlobal && inputChatGlobal && btnEnviarChatGlobal) {
+        const socket = io();
+        socket.on('mensaje', mostrarMensajeGlobal);
+        socket.on('mensaje_equipo', mostrarMensajeEquipo);
+        socket.on('usuario_conectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha conectado.', hora:data.hora}));
+        socket.on('usuario_desconectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha desconectado.', hora:data.hora}));
+
+        // Enviar mensaje global
+        formChatGlobal.onsubmit = function(e) {
+            e.preventDefault();
+            const mensaje = inputChatGlobal.value.trim();
+            if (mensaje.length === 0 || mensaje.length > 200) return;
+            btnEnviarChatGlobal.disabled = true;
+            socket.emit('mensaje', { usuario: usuarioActual, mensaje });
+            inputChatGlobal.value = '';
+            setTimeout(() => btnEnviarChatGlobal.disabled = false, 300);
+        };
+        inputChatGlobal.oninput = function() {
+            btnEnviarChatGlobal.disabled = inputChatGlobal.value.trim().length === 0 || inputChatGlobal.value.length > 200;
+        };
+        // Enviar mensaje equipo
+        if (formChatEquipo && inputChatEquipo && btnEnviarChatEquipo) {
+            formChatEquipo.onsubmit = function(e) {
+                e.preventDefault();
+                const mensaje = inputChatEquipo.value.trim();
+                if (mensaje.length === 0 || mensaje.length > 200) return;
+                btnEnviarChatEquipo.disabled = true;
+                socket.emit('mensaje_equipo', { usuario: usuarioActual, mensaje, equipo_id: equipoId });
+                inputChatEquipo.value = '';
+                setTimeout(() => btnEnviarChatEquipo.disabled = false, 300);
+            };
+            inputChatEquipo.oninput = function() {
+                btnEnviarChatEquipo.disabled = inputChatEquipo.value.trim().length === 0 || inputChatEquipo.value.length > 200;
+            };
+        }
+    }
+    // Animación y soporte modo oscuro
+    function aplicarModoOscuroChat() {
+        document.querySelectorAll('.chat-body').forEach(function(chatBody) {
+            if (document.body.classList.contains('dark-mode')) {
+                chatBody.style.background = '#23272b';
+                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.remove('bg-light','text-dark'));
+                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.add('bg-secondary','text-white'));
+            } else {
+                chatBody.style.background = '#f8f9fa';
+                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.remove('bg-secondary','text-white'));
+                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.add('bg-light','text-dark'));
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', aplicarModoOscuroChat);
+    document.addEventListener('DOMContentLoaded', scrollChatAbajoGlobal);
+    document.body.addEventListener('classChange', aplicarModoOscuroChat);
+    </script>
+    {% endblock %}
     <script>
         // Sidebar toggle
         const sidebar = document.getElementById('sidebar');
@@ -525,7 +687,7 @@
                         <i class="fas fa-exclamation-circle me-2"></i>Completar Perfil
                     </h5>
                 </div>
-                <form id="formHabilidadesFortalezas" method="POST" action="{{ url_for('actualizar_competencias', id=current_user.id) }}">
+                <form id="formHabilidadesFortalezas" method="POST" action="{{ url_for('editar_competencias', id=current_user.id) }}">
                     <div class="modal-body">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
@@ -623,5 +785,180 @@
     </script>
     <!-- Awesomplete JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatFlotante = document.getElementById('chat-flotante');
+        const abrirChat = document.getElementById('abrir-chat');
+        if (chatFlotante && abrirChat) {
+            abrirChat.onclick = () => {
+                chatFlotante.style.display = 'block';
+                abrirChat.style.display = 'none';
+            };
+            const btnCerrar = chatFlotante.querySelector('.btn-light');
+            if (btnCerrar) btnCerrar.onclick = () => {
+                chatFlotante.style.display = 'none';
+                abrirChat.style.display = 'block';
+            };
+        }
+    });
+    </script>
+    <style>
+    .chat-flotante-modern { box-shadow: 0 8px 32px #23263a33; border-radius: 22px; overflow: hidden; }
+    .chat-header-modern { background: linear-gradient(90deg,var(--primary),var(--secondary)); color: #fff; border-top-left-radius: 22px; border-top-right-radius: 22px; box-shadow: 0 2px 12px #23263a22; }
+    .chat-tabs-modern { background: #f4f6fb; position: relative; }
+    .chat-tab-btn.active { color: var(--primary); background: #fff; }
+    .chat-tab-btn:not(.active) { color: var(--primary); background: #f4f6fb; }
+    .chat-tab-underline { left: 0; }
+    .chat-tab-btn.active ~ .chat-tab-underline { left: 50%; }
+    .chat-body-modern { background: rgba(244,246,251,0.95); height: 380px; overflow-y: auto; padding: 22px 18px 16px 18px; backdrop-filter: blur(2px); }
+    .chat-mensajes-modern { min-height: 100px; }
+    .chat-burbuja-modern { max-width: 75%; padding: 13px 20px; border-radius: 20px; margin-bottom: 12px; font-size: 1.08rem; word-break: break-word; box-shadow: 0 2px 12px #23263a18; position: relative; animation: chatFadeIn .5s cubic-bezier(.68,-0.55,.27,1.55); backdrop-filter: blur(1.5px); }
+    .chat-burbuja-propio { background: linear-gradient(90deg,var(--primary),var(--secondary)); color: #fff; margin-left: auto; border-bottom-right-radius: 8px; box-shadow: 0 2px 12px #5c7cfa33; }
+    .chat-burbuja-otro { background: rgba(255,255,255,0.85); color: #23263a; margin-right: auto; border-bottom-left-radius: 8px; border: 1.5px solid #e9ecef; }
+    .chat-hora { font-size: 0.82em; color: #adb5bd; position: absolute; right: 18px; bottom: 4px; }
+    .chat-hora-otro { left: 18px; right: auto; }
+    .chat-form-modern { background: rgba(255,255,255,0.98); border-bottom-left-radius: 22px; border-bottom-right-radius: 22px; box-shadow: 0 -2px 8px #23263a11; }
+    .chat-form-modern input:focus { box-shadow: 0 0 0 2px var(--primary)22; border: none; }
+    .chat-btn-animado:hover { box-shadow: 0 4px 16px #5c7cfa44, 0 0 8px #5c7cfa88; transform: scale(1.08); }
+    .chat-btn-animado:active { transform: scale(0.95); }
+    .chat-body-modern::-webkit-scrollbar { width: 8px; background: #e9ecef; border-radius: 8px; }
+    .chat-body-modern::-webkit-scrollbar-thumb { background: #cfd8dc; border-radius: 8px; }
+    @keyframes chatFadeIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @media (max-width: 600px) { .chat-flotante-modern { width: 99vw !important; right: 0.5vw !important; } }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Pestañas modernas ---
+        const tabGlobal = document.getElementById('tab-global');
+        const tabEquipo = document.getElementById('tab-equipo');
+        const mensajesGlobal = document.getElementById('chat-mensajes-global');
+        const mensajesEquipo = document.getElementById('chat-mensajes-equipo');
+        const formGlobal = document.getElementById('form-chat-global');
+        const formEquipo = document.getElementById('form-chat-equipo');
+        const inputGlobal = document.getElementById('input-chat-global');
+        const inputEquipo = document.getElementById('input-chat-equipo');
+        const tabUnderline = document.querySelector('.chat-tab-underline');
+        function moverUnderline(tab) {
+            if (!tabUnderline) return;
+            if (tab === 'global') {
+                tabUnderline.style.left = '0';
+            } else {
+                tabUnderline.style.left = '50%';
+            }
+        }
+        if (tabGlobal && tabEquipo && mensajesGlobal && mensajesEquipo && formGlobal && formEquipo) {
+            tabGlobal.classList.add('active');
+            tabEquipo.classList.remove('active');
+            moverUnderline('global');
+            tabGlobal.onclick = function() {
+                tabGlobal.classList.add('active');
+                tabEquipo.classList.remove('active');
+                mensajesGlobal.style.display = 'block';
+                mensajesEquipo.style.display = 'none';
+                formGlobal.style.display = 'flex';
+                formEquipo.style.display = 'none';
+                moverUnderline('global');
+                setTimeout(() => { inputGlobal && inputGlobal.focus(); }, 100);
+            };
+            tabEquipo.onclick = function() {
+                tabEquipo.classList.add('active');
+                tabGlobal.classList.remove('active');
+                mensajesGlobal.style.display = 'none';
+                mensajesEquipo.style.display = 'block';
+                formGlobal.style.display = 'none';
+                formEquipo.style.display = 'flex';
+                moverUnderline('equipo');
+                setTimeout(() => { inputEquipo && inputEquipo.focus(); }, 100);
+            };
+        }
+        // --- Burbujas modernas ---
+        function crearBurbuja(data, propio, color) {
+            const hora = data.hora ? `<span class='chat-hora${propio ? '' : ' chat-hora-otro'}'>${data.hora}</span>` : '';
+            return `<div class='chat-burbuja-modern ${propio ? 'chat-burbuja-propio' : 'chat-burbuja-otro'} position-relative'>
+                <span class='fw-semibold small'>${data.usuario}</span><br>
+                <span>${data.mensaje}</span>
+                ${hora}
+            </div>`;
+        }
+        // --- Scroll automático ---
+        function scrollChatAbajoGlobal() { if (mensajesGlobal) mensajesGlobal.scrollTop = mensajesGlobal.scrollHeight; }
+        function scrollChatAbajoEquipo() { if (mensajesEquipo) mensajesEquipo.scrollTop = mensajesEquipo.scrollHeight; }
+        // --- Mostrar mensajes ---
+        function mostrarMensajeGlobal(data) {
+            if (!mensajesGlobal) return;
+            mensajesGlobal.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, ''));
+            scrollChatAbajoGlobal();
+            if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
+        }
+        function mostrarMensajeEquipo(data) {
+            if (!mensajesEquipo) return;
+            mensajesEquipo.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, ''));
+            scrollChatAbajoEquipo();
+            if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
+        }
+        // --- Botón abrir/cerrar chat ---
+        const chatFlotante = document.getElementById('chat-flotante');
+        const abrirChat = document.getElementById('abrir-chat');
+        if (chatFlotante && abrirChat) {
+            abrirChat.onclick = () => {
+                chatFlotante.style.display = 'block';
+                abrirChat.style.display = 'none';
+                setTimeout(() => { inputGlobal && inputGlobal.focus(); }, 200);
+            };
+            const btnCerrar = chatFlotante.querySelector('.btn-light');
+            if (btnCerrar) btnCerrar.onclick = () => {
+                chatFlotante.style.display = 'none';
+                abrirChat.style.display = 'block';
+            };
+        }
+        // --- SocketIO y envío de mensajes ---
+        if (typeof io !== 'undefined' && formGlobal && inputGlobal && btnEnviarChatGlobal) {
+            const socket = io();
+            socket.on('mensaje', mostrarMensajeGlobal);
+            socket.on('mensaje_equipo', mostrarMensajeEquipo);
+            socket.on('usuario_conectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha conectado.', hora:data.hora}));
+            socket.on('usuario_desconectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha desconectado.', hora:data.hora}));
+            // Enviar mensaje global
+            formGlobal.onsubmit = function(e) {
+                e.preventDefault();
+                const mensaje = inputGlobal.value.trim();
+                if (mensaje.length === 0 || mensaje.length > 200) return;
+                btnEnviarChatGlobal.disabled = true;
+                socket.emit('mensaje', { usuario: usuarioActual, mensaje });
+                inputGlobal.value = '';
+                setTimeout(() => btnEnviarChatGlobal.disabled = false, 300);
+            };
+            inputGlobal.oninput = function() {
+                btnEnviarChatGlobal.disabled = inputGlobal.value.trim().length === 0 || inputGlobal.value.length > 200;
+            };
+            // Enviar mensaje equipo
+            if (formEquipo && inputEquipo && btnEnviarChatEquipo) {
+                formEquipo.onsubmit = function(e) {
+                    e.preventDefault();
+                    const mensaje = inputEquipo.value.trim();
+                    if (mensaje.length === 0 || mensaje.length > 200) return;
+                    btnEnviarChatEquipo.disabled = true;
+                    socket.emit('mensaje_equipo', { usuario: usuarioActual, mensaje, equipo_id: equipoId });
+                    inputEquipo.value = '';
+                    setTimeout(() => btnEnviarChatEquipo.disabled = false, 300);
+                };
+                inputEquipo.oninput = function() {
+                    btnEnviarChatEquipo.disabled = inputEquipo.value.trim().length === 0 || inputEquipo.value.length > 200;
+                };
+            }
+        }
+    });
+    </script>
+    <script>
+    // Fix de accesibilidad: al cerrar un modal, quita el foco de cualquier input/botón dentro del modal
+    // para evitar el warning de aria-hidden y mejorar la experiencia con lectores de pantalla
+    if (window.bootstrap) {
+        document.addEventListener('hidden.bs.modal', function (event) {
+            if (document.activeElement && event.target.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        });
+    }
+    </script>
 </body>
 </html>

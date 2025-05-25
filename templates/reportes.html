@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="container mt-4">
+    <h2>Reportes Personalizados de Tareas</h2>
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-2">
+            <label class="form-label">Equipo</label>
+            <select name="equipo_id" class="form-select">
+                <option value="">Todos</option>
+                {% for eq in equipos %}
+                <option value="{{ eq.id }}" {% if filtros.equipo_id == eq.id|string %}selected{% endif %}>{{ eq.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Empleado</label>
+            <select name="empleado_id" class="form-select">
+                <option value="">Todos</option>
+                {% for emp in empleados %}
+                <option value="{{ emp.id }}" {% if filtros.empleado_id == emp.id|string %}selected{% endif %}>{{ emp.nombre }} {{ emp.apellido }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                <option value="pendiente" {% if filtros.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="en_progreso" {% if filtros.estado == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                <option value="completada" {% if filtros.estado == 'completada' %}selected{% endif %}>Completada</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Prioridad</label>
+            <select name="prioridad" class="form-select">
+                <option value="">Todas</option>
+                <option value="baja" {% if filtros.prioridad == 'baja' %}selected{% endif %}>Baja</option>
+                <option value="media" {% if filtros.prioridad == 'media' %}selected{% endif %}>Media</option>
+                <option value="alta" {% if filtros.prioridad == 'alta' %}selected{% endif %}>Alta</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Fecha Inicio</label>
+            <input type="date" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Fecha Fin</label>
+            <input type="date" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin or '' }}">
+        </div>
+        <div class="col-12 d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+            <a href="{{ url_for('reportes') }}" class="btn btn-secondary"><i class="fas fa-times"></i> Limpiar</a>
+            <a href="{{ url_for('exportar_reporte_excel', **filtros) }}" class="btn btn-success" target="_blank"><i class="fas fa-file-excel"></i> Exportar Excel</a>
+            <a href="{{ url_for('exportar_reporte_pdf', **filtros) }}" class="btn btn-danger" target="_blank"><i class="fas fa-file-pdf"></i> Exportar PDF</a>
+        </div>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Descripción</th>
+                    <th>Empleado</th>
+                    <th>Equipo</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Fecha Creación</th>
+                    <th>Fecha Límite</th>
+                    <th>Tiempo Estimado</th>
+                    <th>Tiempo Real</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tareas %}
+                <tr>
+                    <td>{{ t.titulo }}</td>
+                    <td>{{ t.descripcion }}</td>
+                    <td>{{ t.empleado_nombre }} {{ t.empleado_apellido }}</td>
+                    <td>{{ t.equipo_nombre }}</td>
+                    <td>{{ t.estado|capitalize }}</td>
+                    <td>{{ t.prioridad|capitalize }}</td>
+                    <td>{{ t.fecha_creacion.strftime('%d/%m/%Y') if t.fecha_creacion else '' }}</td>
+                    <td>{{ t.fecha_limite.strftime('%d/%m/%Y') if t.fecha_limite else '' }}</td>
+                    <td>{{ t.tiempo_estimado }}</td>
+                    <td>{{ t.tiempo_real }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="10" class="text-center text-muted">No hay tareas para los filtros seleccionados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

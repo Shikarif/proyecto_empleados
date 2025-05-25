@@ -41,6 +41,11 @@
         </div>
         
         <div class="mb-3">
+            <label for="tiempo_estimado" class="form-label">Tiempo Estimado (minutos)</label>
+            <input type="number" class="form-control" id="tiempo_estimado" name="tiempo_estimado" min="0" value="0" required>
+        </div>
+        
+        <div class="mb-3">
             <button type="submit" class="btn btn-primary">Crear Tarea</button>
             <a href="{{ url_for('tareas.listar_tareas') }}" class="btn btn-secondary">Cancelar</a>
         </div>
