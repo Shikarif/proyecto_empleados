@@ -1,124 +1,330 @@
 {% extends "base.html" %}
 
+{% block title %}Gestión de Tareas | Sistema de Gestión de Empleados{% endblock %}
+
 {% block contenido %}
-<div class="container mt-4">
-    <h2>Gestión de Tareas</h2>
-    
-    <div class="row mb-3">
-        <div class="col">
-            <a href="{{ url_for('tareas.nueva_tarea') }}" class="btn btn-primary">
+<div class="container-fluid py-4 px-2 px-md-5 tareas-wrapper-nueva">
+    <div class="row mb-4 align-items-center justify-content-between g-3">
+        <div class="col-auto d-flex align-items-center gap-3">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="tareas-logo-nueva" onerror="this.style.display='none'">
+            <h1 class="fw-bold mb-0 display-6 tareas-titulo-nueva"><i class="fas fa-tasks"></i> Gestión de Tareas</h1>
+        </div>
+        <div class="col-auto d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('tareas.nueva_tarea') }}" class="btn btn-success btn-lg fw-bold shadow-sm modern-btn-action animate__animated animate__pulse animate__infinite">
                 <i class="fas fa-plus"></i> Nueva Tarea
             </a>
-            <a href="{{ url_for('tareas.asignar_automatico') }}" class="btn btn-success">
-                <i class="fas fa-magic"></i> Asignar Automáticamente
-            </a>
+            {% if current_user.rol in ['jefe', 'lider'] %}
+            <button class="btn btn-warning btn-lg fw-bold shadow-sm modern-btn-action animate__animated animate__fadeInRight" data-bs-toggle="modal" data-bs-target="#modalAsignarEquitativamente">
+                <i class="fas fa-balance-scale"></i> Asignar equitativamente
+            </button>
+            {% endif %}
         </div>
     </div>
-
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Título</th>
-                    <th>Descripción</th>
-                    <th>Fecha Límite</th>
-                    <th>Prioridad</th>
-                    <th>Estado</th>
-                    <th>Horas Estimadas</th>
-                    <th>Tiempo Estimado (min)</th>
-                    <th>Tiempo Real (min)</th>
-                    <th>Temporizador</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tarea in tareas %}
-                <tr>
-                    <td>{{ tarea.titulo }}</td>
-                    <td>{{ tarea.descripcion }}</td>
-                    <td>{{ tarea.fecha_limite }}</td>
-                    <td>
-                        <span class="badge {% if tarea.prioridad == 'alta' %}bg-danger
-                                         {% elif tarea.prioridad == 'media' %}bg-warning
-                                         {% else %}bg-info{% endif %}">
-                            {{ tarea.prioridad }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge {% if tarea.estado == 'completada' %}bg-success
-                                         {% elif tarea.estado == 'en_progreso' %}bg-primary
-                                         {% else %}bg-secondary{% endif %}">
-                            {{ tarea.estado }}
-                        </span>
-                    </td>
-                    <td>{{ tarea.horas_estimadas }}</td>
-                    <td>{{ tarea.tiempo_estimado }}</td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm tiempo-real-input" value="{{ tarea.tiempo_real }}" min="0" data-tarea-id="{{ tarea.id }}" style="width:80px;display:inline-block;">
-                        <button class="btn btn-outline-secondary btn-sm guardar-tiempo-real" data-tarea-id="{{ tarea.id }}" title="Guardar tiempo real"><i class="fas fa-save"></i></button>
-                    </td>
-                    <td>
-                        <div class="temporizador-container" data-tarea-id="{{ tarea.id }}">
-                            <span class="temporizador-display badge bg-dark fs-6 px-3 py-2" id="temporizador-{{ tarea.id }}">00:00:00</span>
-                            {% if tarea.temporizador_activo %}
-                                <button class="btn btn-warning btn-sm pausar-temporizador" data-tarea-id="{{ tarea.id }}"><i class="fas fa-pause"></i> Pausar</button>
-                            {% else %}
-                                <button class="btn btn-success btn-sm iniciar-temporizador" data-tarea-id="{{ tarea.id }}"><i class="fas fa-play"></i> Iniciar</button>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <a href="#" class="btn btn-sm btn-info">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="#" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div class="card shadow-lg border-0 modern-card-nueva animate__animated animate__fadeInUp tareas-card-expandida-nueva">
+        <div class="card-body p-4">
+            {% if tareas|length == 0 %}
+            <div class="tareas-vacio-nueva text-center py-5 animate__animated animate__fadeIn">
+                <img src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png" alt="Sin tareas" style="width:110px;opacity:0.7;">
+                <h4 class="mt-4 mb-2 fw-bold">¡No tienes tareas registradas!</h4>
+                <p class="text-muted mb-4">Crea tu primera tarea para comenzar a gestionar tu equipo de forma profesional.</p>
+                <a href="{{ url_for('tareas.nueva_tarea') }}" class="btn btn-success btn-lg px-5 shadow-sm animate__animated animate__pulse animate__infinite"><i class="fas fa-plus"></i> Nueva Tarea</a>
+            </div>
+            {% else %}
+            <div class="table-responsive rounded-4 shadow-sm animate__animated animate__fadeInUp animate__delay-1s">
+                <table id="tablaTareas" class="table table-striped table-hover modern-table-nueva align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th><i class="fas fa-heading"></i> Título</th>
+                            <th><i class="fas fa-align-left"></i> Descripción</th>
+                            <th><i class="fas fa-calendar-alt"></i> Fecha Límite</th>
+                            <th><i class="fas fa-flag"></i> Prioridad</th>
+                            <th><i class="fas fa-tasks"></i> Estado</th>
+                            <th><i class="fas fa-hourglass-half"></i> Horas Estimadas</th>
+                            <th><i class="fas fa-clock"></i> Tiempo Estimado (min)</th>
+                            <th><i class="fas fa-stopwatch"></i> Tiempo Real (min)</th>
+                            <th><i class="fas fa-stopwatch"></i> Temporizador</th>
+                            <th><i class="fas fa-cogs"></i> Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tarea in tareas %}
+                        <tr class="modern-row-nueva">
+                            <td class="fw-semibold">{{ tarea.titulo }}</td>
+                            <td>{{ tarea.descripcion }}</td>
+                            <td>{{ tarea.fecha_limite }}</td>
+                            <td>
+                                <span class="badge px-3 py-2 shadow-sm animate__animated animate__fadeInRight {{ 'bg-gradient-danger' if tarea.prioridad=='alta' else 'bg-gradient-warning' if tarea.prioridad=='media' else 'bg-gradient-success' }}">
+                                    <i class="fas fa-{{ 'exclamation-triangle' if tarea.prioridad=='alta' else 'exclamation-circle' if tarea.prioridad=='media' else 'check-circle' }} me-1"></i>
+                                    {{ tarea.prioridad|capitalize }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-gradient-info text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">
+                                    {{ tarea.estado|capitalize }}
+                                </span>
+                            </td>
+                            <td>{{ tarea.horas_estimadas }}</td>
+                            <td>{{ tarea.tiempo_estimado }}</td>
+                            <td>{{ tarea.tiempo_real }}</td>
+                            <td>
+                                <span class="badge bg-gradient-primary text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">
+                                    <i class="fas fa-stopwatch"></i> {{ tarea.temporizador or '00:00' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="#" class="btn btn-sm btn-primary modern-btn-action-nueva me-1 animate__animated animate__bounceIn disabled" title="Editar (no disponible)" data-bs-toggle="tooltip" data-bs-placement="top">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button onclick="eliminarTarea({{ tarea.id }})" class="btn btn-sm btn-danger modern-btn-action-nueva animate__animated animate__bounceIn" title="Eliminar" data-bs-toggle="tooltip" data-bs-placement="top">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
+
+<!-- Modal Asignar Equitativamente -->
+{% if current_user.rol in ['jefe', 'lider'] %}
+<div class="modal fade" id="modalAsignarEquitativamente" tabindex="-1" aria-labelledby="modalAsignarEquitativamenteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-gradient-primary text-white">
+        <h5 class="modal-title" id="modalAsignarEquitativamenteLabel"><i class="fas fa-balance-scale me-2"></i>Asignación Equitativa de Tareas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info mb-3">
+          <i class="fas fa-info-circle me-2"></i>
+          El sistema sugerirá la mejor distribución de tareas entre los usuarios o equipos seleccionados, considerando la carga de trabajo y disponibilidad.
+        </div>
+        <!-- Aquí irá la sugerencia de asignación (por ahora solo un placeholder) -->
+        <div id="sugerenciaAsignacion">
+          <p class="text-muted">Aquí aparecerá la sugerencia de asignación equitativa (próximamente).</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmarAsignacionEquitativa" disabled>Confirmar asignación</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.tareas-wrapper-nueva {
+    min-height: 100vh;
+    background: var(--bg, #f4f6fb);
+    transition: background 0.4s;
+}
+.tareas-logo-nueva {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    object-fit: contain;
+    box-shadow: 0 2px 8px #5c7cfa22;
+    background: #fff;
+}
+.tareas-titulo-nueva {
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+    color: var(--primary, #23263a);
+}
+.modern-card-nueva {
+    border-radius: 1.7rem !important;
+    min-height: 60vh;
+    width: 100%;
+    max-width: 100vw;
+    margin: 0 auto;
+    background: #fff;
+    transition: background 0.4s;
+}
+.tareas-vacio-nueva img {
+    filter: drop-shadow(0 4px 16px #23263a22);
+}
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+}
+.bg-gradient-info {
+    background: linear-gradient(135deg, #3498db, #2ecc71) !important;
+}
+.bg-gradient-success {
+    background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+}
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #fbc531, #e1b000) !important;
+    color: #23263a !important;
+}
+.bg-gradient-danger {
+    background: linear-gradient(135deg, #fa5252, #b71c1c) !important;
+}
+.dark-mode .tareas-wrapper-nueva,
+.dark-mode .modern-card-nueva {
+    background: #23263a !important;
+    color: #f1f1f1 !important;
+}
+.dark-mode .tareas-titulo-nueva {
+    color: #f1f1f1 !important;
+}
+.dark-mode .table-light {
+    background: #23263a !important;
+    color: #f1f1f1 !important;
+}
+.dark-mode .modern-table-nueva, .dark-mode .modern-table-nueva th, .dark-mode .modern-table-nueva td {
+    background: #23263a !important;
+    color: #f1f1f1 !important;
+}
+.dark-mode .badge.bg-gradient-info { background: linear-gradient(135deg, #3498db, #2ecc71) !important; color: #fff !important; }
+.dark-mode .badge.bg-gradient-success { background: linear-gradient(135deg, #2ecc71, #27ae60) !important; color: #fff !important; }
+.dark-mode .badge.bg-gradient-warning { background: linear-gradient(135deg, #fbc531, #e1b000) !important; color: #23263a !important; }
+.dark-mode .badge.bg-gradient-danger { background: linear-gradient(135deg, #fa5252, #b71c1c) !important; color: #fff !important; }
+.badge {
+    padding: 0.55em 1.2em;
+    font-weight: 600;
+    font-size: 1.01em;
+    border-radius: 1.2em;
+    box-shadow: 0 1px 4px #23263a11;
+    letter-spacing: 0.5px;
+}
+.modern-table-nueva tbody tr.modern-row-nueva {
+    transition: background 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+}
+.modern-table-nueva tbody tr.modern-row-nueva:hover {
+    background: #f4f6fb !important;
+    box-shadow: 0 2px 12px #5c7cfa11;
+}
+.modern-btn-action-nueva {
+    border-radius: 1.2em;
+    box-shadow: 0 1px 4px #23263a11;
+    transition: box-shadow 0.2s, transform 0.18s;
+}
+.modern-btn-action-nueva:hover {
+    box-shadow: 0 4px 16px #fa525244, 0 0 8px #fa525288;
+    transform: scale(1.12);
+}
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+}
+@media (max-width: 900px) {
+    .tareas-logo-nueva { width: 36px; height: 36px; }
+    .tareas-titulo-nueva { font-size: 1.3rem; }
+}
+@media (max-width: 600px) {
+    .tareas-logo-nueva { width: 28px; height: 28px; }
+    .tareas-titulo-nueva { font-size: 1.1rem; }
+    .tareas-wrapper-nueva { padding: 0.5rem !important; }
+}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Cronómetro visual y AJAX para temporizador y tiempo real
-function pad(num) { return num.toString().padStart(2, '0'); }
-let temporizadores = {};
-
-function actualizarDisplay(tareaId, segundos) {
-    let h = Math.floor(segundos / 3600);
-    let m = Math.floor((segundos % 3600) / 60);
-    let s = segundos % 60;
-    document.getElementById('temporizador-' + tareaId).textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+let ultimaSugerenciaEquitativa = [];
+let asignacionesPlanas = [];
+// Inicializar DataTable
+$(document).ready(function() {
+    $('#tablaTareas').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        }
+    });
+});
+// Eliminar tarea
+function eliminarTarea(id) {
+    if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
+        fetch(`/tareas/eliminar/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Tarea eliminada con éxito', 'success');
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showToast('Error al eliminar la tarea', 'danger');
+            }
+        });
+    }
 }
-
-// Iniciar temporizador
-$(document).on('click', '.iniciar-temporizador', function() {
-    let tareaId = $(this).data('tarea-id');
-    $.post(`/tareas/iniciar_temporizador/${tareaId}`, function(resp) {
-        if (resp.success) location.reload();
+// Mostrar sugerencia de asignación equitativa al abrir el modal
+$('#modalAsignarEquitativamente').on('show.bs.modal', function () {
+    const $sugerencia = $('#sugerenciaAsignacion');
+    const $btnConfirmar = $('#btnConfirmarAsignacionEquitativa');
+    $btnConfirmar.prop('disabled', true);
+    $sugerencia.html('<div class="text-center text-muted py-4"><div class="spinner-border text-primary" role="status"></div><br>Cargando sugerencia...</div>');
+    $.get('/tareas/asignar-equitativamente', function(data) {
+        // Guardar la sugerencia agrupada para mostrar y la plana para enviar
+        ultimaSugerenciaEquitativa = data.sugerencia || [];
+        asignacionesPlanas = data.sugerencia_plana || [];
+        // Si el backend no envía la plana, la reconstruimos desde la agrupada (no recomendado, pero fallback)
+        if (!asignacionesPlanas.length && data.sugerencia && Array.isArray(data.sugerencia)) {
+            asignacionesPlanas = [];
+            // No se puede reconstruir sin tarea_id y empleado_id, por eso es importante que el backend la envíe
+        }
+        if (ultimaSugerenciaEquitativa.length === 0) {
+            $sugerencia.html('<div class="alert alert-warning">No hay sugerencias de asignación disponibles.</div>');
+            return;
+        }
+        let html = '<table class="table table-bordered"><thead><tr><th>Usuario</th><th>Tareas asignadas</th></tr></thead><tbody>';
+        ultimaSugerenciaEquitativa.forEach(function(item) {
+            html += `<tr><td>${item.nombre}</td><td>${item.tareas.join(', ')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        $sugerencia.html(html);
+        $btnConfirmar.prop('disabled', false);
+    }).fail(function() {
+        $sugerencia.html('<div class="alert alert-danger">Error al obtener la sugerencia de asignación.</div>');
     });
 });
-// Pausar temporizador
-$(document).on('click', '.pausar-temporizador', function() {
-    let tareaId = $(this).data('tarea-id');
-    $.post(`/tareas/pausar_temporizador/${tareaId}`, function(resp) {
-        if (resp.success) location.reload();
-    });
-});
-// Guardar tiempo real manual
-$(document).on('click', '.guardar-tiempo-real', function() {
-    let tareaId = $(this).data('tarea-id');
-    let nuevoTiempo = $(this).siblings('.tiempo-real-input').val();
-    fetch(`/tareas/actualizar_tiempo_real/${tareaId}`, {
+// Confirmar asignación equitativa
+$('#btnConfirmarAsignacionEquitativa').on('click', function() {
+    if (!asignacionesPlanas.length) {
+        showToast('No hay asignaciones para confirmar', 'danger');
+        return;
+    }
+    $.ajax({
+        url: '/tareas/confirmar-asignacion-equitativa',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tiempo_real: nuevoTiempo })
-    }).then(r => r.json()).then(resp => { if (resp.success) location.reload(); });
+        contentType: 'application/json',
+        data: JSON.stringify({asignaciones: asignacionesPlanas}),
+        success: function(data) {
+            if (data.success) {
+                showToast('Asignación realizada con éxito', 'success');
+                setTimeout(() => { window.location.reload(); }, 1200);
+            } else {
+                showToast('Error al confirmar la asignación', 'danger');
+            }
+        },
+        error: function() {
+            showToast('Error de red al confirmar la asignación', 'danger');
+        }
+    });
 });
 </script>
-{% endblock %} 
+{% endblock %}

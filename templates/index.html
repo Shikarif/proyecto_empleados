@@ -1,28 +1,28 @@
 {% extends "base.html" %}
 
 {% block contenido %}
-<div class="card shadow-lg border-0">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center rounded-top">
-        <h4 class="mb-0">
-            <i class="fas fa-list"></i> Lista de Empleados
+<div class="card shadow-lg border-0 modern-card animate__animated animate__fadeInUp">
+    <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center rounded-top-4 py-3 px-4">
+        <h4 class="mb-0 d-flex align-items-center gap-2">
+            <i class="fas fa-list animate__animated animate__fadeInLeft"></i> Lista de Empleados
         </h4>
-        <a href="{{ url_for('estadisticas') }}" class="btn btn-light btn-sm fw-bold">
+        <a href="{{ url_for('estadisticas') }}" class="btn btn-light btn-lg fw-bold shadow-sm modern-btn-stats animate__animated animate__fadeInRight">
             <i class="fas fa-chart-bar"></i> Ver Estadísticas
         </a>
     </div>
-    <div class="card-body">
+    <div class="card-body p-4">
         <!-- Barra de búsqueda y filtros -->
         <form action="{{ url_for('buscar') }}" method="GET" class="mb-4">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-5">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="busqueda" name="q" placeholder="Buscar por nombre, apellido o correo..." value="{{ query if query else '' }}">
+                        <input type="text" class="form-control modern-input" id="busqueda" name="q" placeholder="Buscar por nombre, apellido o correo..." value="{{ query if query else '' }}">
                         <label for="busqueda"><i class="fas fa-search"></i> Buscar...</label>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-12 col-md-3">
                     <div class="form-floating">
-                        <select class="form-select" id="rolFiltro" name="rol">
+                        <select class="form-select modern-input" id="rolFiltro" name="rol">
                             <option value="">Todos los roles</option>
                             <option value="jefe" {% if rol_filtro == 'jefe' %}selected{% endif %}>Jefe</option>
                             <option value="lider" {% if rol_filtro == 'lider' %}selected{% endif %}>Líder</option>
@@ -31,12 +31,12 @@
                         <label for="rolFiltro"><i class="fas fa-user-tag"></i> Rol</label>
                     </div>
                 </div>
-                <div class="col-md-4 d-flex justify-content-end gap-2">
-                    <button class="btn btn-primary btn-lg px-4" type="submit" title="Buscar">
+                <div class="col-12 col-md-4 d-flex justify-content-end gap-2">
+                    <button class="btn btn-primary btn-lg px-4 modern-btn-search animate__animated animate__pulse animate__infinite" type="submit" title="Buscar">
                         <i class="fas fa-search"></i>
                     </button>
                     {% if query or rol_filtro %}
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-4" title="Limpiar filtros">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-4 modern-btn-clear animate__animated animate__fadeIn">
                             <i class="fas fa-times"></i>
                         </a>
                     {% endif %}
@@ -45,9 +45,9 @@
         </form>
 
         {% if empleados %}
-            <div class="table-responsive rounded-4 shadow-sm">
-                <table id="tablaEmpleados" class="table table-striped table-hover">
-                    <thead>
+            <div class="table-responsive rounded-4 shadow-sm animate__animated animate__fadeInUp animate__delay-1s">
+                <table id="tablaEmpleados" class="table table-striped table-hover modern-table align-middle mb-0">
+                    <thead class="table-light sticky-top">
                         <tr>
                             <th>Nombre</th>
                             <th>Apellido</th>
@@ -59,16 +59,24 @@
                     </thead>
                     <tbody>
                         {% for empleado in empleados %}
-                        <tr>
-                            <td>{{ empleado[1] }}</td>
+                        <tr class="modern-row">
+                            <td class="d-flex align-items-center gap-2">
+                                <div class="avatar-circle bg-primary text-white shadow-sm fw-bold fs-6 animate__animated animate__fadeIn">
+                                    {{ empleado[1][0] }}
+                                </div>
+                                <span class="fw-semibold">{{ empleado[1] }}</span>
+                            </td>
                             <td>{{ empleado[2] }}</td>
                             <td>{{ empleado[3] }}</td>
-                            <td>{{ empleado[6]|capitalize }}</td>
-                            <td>{{ empleado[5] or 'No asignado' }}</td>
                             <td>
-                                <!-- Acciones -->
-                                <a href="{{ url_for('editar', id=empleado[0]) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
-                                <a href="{{ url_for('eliminar', id=empleado[0]) }}" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
+                                <span class="badge bg-gradient-info text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">{{ empleado[6]|capitalize }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-gradient-success text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">{{ empleado[5] or 'No asignado' }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('editar', id=empleado[0]) }}" class="btn btn-sm btn-primary modern-btn-action me-1 animate__animated animate__bounceIn" title="Editar"><i class="fas fa-edit"></i></a>
+                                <a href="{{ url_for('eliminar', id=empleado[0]) }}" class="btn btn-sm btn-danger modern-btn-action animate__animated animate__bounceIn" title="Eliminar"><i class="fas fa-trash"></i></a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -76,7 +84,7 @@
                 </table>
             </div>
         {% else %}
-            <div class="alert alert-info rounded-3 mt-4">
+            <div class="alert alert-info rounded-3 mt-4 animate__animated animate__fadeIn">
                 <i class="fas fa-info-circle"></i> 
                 {% if query %}
                     No se encontraron empleados que coincidan con la búsqueda.
@@ -88,17 +96,111 @@
     </div>
 </div>
 <style>
-.table-row-effect {
-    transition: box-shadow 0.18s, background 0.18s;
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
 }
-.table-row-effect:hover {
-    background: #f1f3fa !important;
-    box-shadow: 0 2px 12px 0 rgba(92,124,250,0.08);
+.bg-gradient-info {
+    background: linear-gradient(135deg, #3498db, #2ecc71) !important;
+}
+.bg-gradient-success {
+    background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+}
+.modern-card {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+    transition: box-shadow 0.3s, transform 0.2s;
+}
+.modern-card:hover {
+    box-shadow: 0 8px 32px #23263a33, 0 1.5px 8px #5c7cfa22;
+    transform: translateY(-4px) scale(1.02);
+}
+.card-header {
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    font-size: 1.15rem;
+}
+.avatar-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px #5c7cfa22;
+    border: 2.5px solid #fff;
+    background: linear-gradient(135deg, #5c7cfa 0%, #51cf66 100%);
+    letter-spacing: 1px;
+}
+.badge {
+    padding: 0.55em 1.2em;
+    font-weight: 600;
+    font-size: 1.01em;
+    border-radius: 1.2em;
+    box-shadow: 0 1px 4px #23263a11;
+    letter-spacing: 0.5px;
+}
+.modern-table tbody tr.modern-row {
+    transition: background 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+}
+.modern-table tbody tr.modern-row:hover {
+    background: #f4f6fb !important;
+    box-shadow: 0 2px 12px #5c7cfa11;
+}
+.modern-btn-stats {
+    border-radius: 1.2em;
+    box-shadow: 0 2px 8px #5c7cfa22;
+    transition: box-shadow 0.2s, transform 0.18s;
+}
+.modern-btn-stats:hover {
+    box-shadow: 0 4px 16px #5c7cfa44, 0 0 8px #5c7cfa88;
+    transform: scale(1.08);
+}
+.modern-btn-search, .modern-btn-clear {
+    border-radius: 1.2em;
+    box-shadow: 0 2px 8px #5c7cfa22;
+    transition: box-shadow 0.2s, transform 0.18s;
+}
+.modern-btn-search:hover, .modern-btn-clear:hover {
+    box-shadow: 0 4px 16px #51cf6644, 0 0 8px #51cf6688;
+    transform: scale(1.08);
+}
+.modern-btn-action {
+    border-radius: 1.2em;
+    box-shadow: 0 1px 4px #23263a11;
+    transition: box-shadow 0.2s, transform 0.18s;
+}
+.modern-btn-action:hover {
+    box-shadow: 0 4px 16px #fa525244, 0 0 8px #fa525288;
+    transform: scale(1.12);
+}
+.modern-input {
+    border-radius: 1.2em !important;
+    box-shadow: 0 1px 4px #23263a11;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.modern-input:focus {
+    box-shadow: 0 2px 8px #5c7cfa44;
+    border-color: #5c7cfa;
 }
 .table thead th {
     position: sticky;
     top: 0;
     z-index: 2;
+    background: #f8f9fa;
+}
+@media (max-width: 900px) {
+    .modern-card { border-radius: 1rem !important; }
+    .card-header { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; }
+    .avatar-circle { width: 32px; height: 32px; font-size: 1rem; }
+}
+@media (max-width: 600px) {
+    .modern-card { border-radius: 0.7rem !important; }
+    .card-header { border-top-left-radius: 0.7rem !important; border-top-right-radius: 0.7rem !important; }
+    .avatar-circle { width: 26px; height: 26px; font-size: 0.9rem; }
+    .container-fluid-custom { padding: 0.5rem !important; }
 }
 </style>
 {% endblock %}

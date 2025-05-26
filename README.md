@@ -174,11 +174,3 @@ python app.py
 
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE.md](LICENSE.md) para más detalles. 
 
-# 1. Activar el entorno virtual
-venv\Scripts\activate
-
-# 2. Ejecutar la aplicación
-python app.py
-
-# 3. Restaurar entorno de desarrollo
-pip install -r requirements_backup.txt

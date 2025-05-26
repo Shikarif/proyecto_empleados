@@ -1,32 +1,31 @@
 {% extends "base.html" %}
 
 {% block contenido %}
-<div class="row">
+<div class="row g-4">
     <!-- Tarjeta de Total de Empleados -->
-    <div class="col-md-4 mb-4">
-        <div class="card bg-gradient-primary text-white">
-            <div class="card-body text-center">
-                <div class="display-1 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-lg border-0 modern-card h-100 animate__animated animate__fadeInUp">
+            <div class="card-body text-center p-4 bg-gradient-primary text-white rounded-4 position-relative overflow-hidden">
+                <div class="display-1 mb-3 animate__animated animate__pulse animate__infinite">
                     <i class="fas fa-users"></i>
                 </div>
-                <h5 class="card-title">Total de Empleados</h5>
-                <h2 class="display-4 fw-bold">{{ total_empleados }}</h2>
+                <h5 class="card-title mb-2 fw-semibold">Total de Empleados</h5>
+                <h2 class="display-3 fw-bold mb-0" style="letter-spacing:2px;">{{ total_empleados }}</h2>
             </div>
         </div>
     </div>
 
     <!-- Tarjeta de Últimos Agregados -->
-    <div class="col-md-8 mb-4">
-        <div class="card">
-            <div class="card-header bg-gradient-info text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-plus"></i> Últimos Empleados Agregados
-                </h5>
+    <div class="col-12 col-md-8">
+        <div class="card shadow-lg border-0 modern-card h-100 animate__animated animate__fadeInUp animate__delay-1s">
+            <div class="card-header bg-gradient-info text-white rounded-top-4 d-flex align-items-center gap-2">
+                <i class="fas fa-user-plus fa-lg animate__animated animate__bounceIn"></i>
+                <h5 class="mb-0 fw-semibold">Últimos Empleados Agregados</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th>Nombre</th>
                                 <th>Equipo</th>
@@ -35,17 +34,17 @@
                         </thead>
                         <tbody>
                             {% for empleado in ultimos_agregados %}
-                            <tr>
+                            <tr class="modern-row">
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-circle bg-primary text-white me-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-circle bg-primary text-white shadow-sm fw-bold fs-6 animate__animated animate__fadeIn">
                                             {{ empleado['nombre'][0] }}{{ empleado['apellido'][0] }}
                                         </div>
-                                        {{ empleado['nombre'] }} {{ empleado['apellido'] }}
+                                        <span class="fw-semibold">{{ empleado['nombre'] }} {{ empleado['apellido'] }}</span>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">
+                                    <span class="badge bg-info bg-gradient px-3 py-2 animate__animated animate__fadeInRight">
                                         {% if empleado['equipo_id'] %}
                                             {% for eq in empleados_por_equipo %}
                                                 {% if eq['equipo'] and loop.index == empleado['equipo_id'] %}{{ eq['equipo'] }}{% endif %}
@@ -54,7 +53,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">{{ empleado['rol']|capitalize }}</span>
+                                    <span class="badge bg-secondary bg-gradient px-3 py-2 animate__animated animate__fadeInRight">{{ empleado['rol']|capitalize }}</span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -66,17 +65,16 @@
     </div>
 
     <!-- Gráfico de Empleados por Equipo -->
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-gradient-success text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-pie"></i> Distribución por Equipo
-                </h5>
+    <div class="col-12">
+        <div class="card shadow-lg border-0 modern-card animate__animated animate__fadeInUp animate__delay-2s">
+            <div class="card-header bg-gradient-success text-white rounded-top-4 d-flex align-items-center gap-2">
+                <i class="fas fa-chart-pie fa-lg animate__animated animate__fadeIn"></i>
+                <h5 class="mb-0 fw-semibold">Distribución por Equipo</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped align-middle mb-0 modern-table">
+                        <thead class="table-light">
                             <tr>
                                 <th>Equipo</th>
                                 <th>Total de Empleados</th>
@@ -85,22 +83,24 @@
                         </thead>
                         <tbody>
                             {% for eq in empleados_por_equipo %}
-                            <tr>
+                            <tr class="modern-row">
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-users text-primary me-2"></i>
-                                        {{ eq['equipo'] or 'No especificado' }}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-users text-primary fs-5"></i>
+                                        <span class="fw-semibold">{{ eq['equipo'] or 'No especificado' }}</span>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">
-                                        {{ eq['total'] }} empleados
-                                    </span>
+                                    <span class="badge bg-secondary bg-gradient px-3 py-2">{{ eq['total'] }} empleados</span>
                                 </td>
-                                <td style="width: 50%;">
-                                    <div class="progress">
-                                        <div class="progress-bar bg-gradient-primary" role="progressbar" 
-                                             style="width: {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%">
+                                <td style="width: 50%; min-width:180px;">
+                                    <div class="progress modern-progress" style="height:1.7rem; background:#e9ecef;">
+                                        <div class="progress-bar bg-gradient-primary fw-semibold d-flex align-items-center justify-content-center animate__animated animate__slideInLeft"
+                                             role="progressbar"
+                                             style="width: {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%; transition: width 1.2s cubic-bezier(.68,-0.55,.27,1.55); font-size:1rem;"
+                                             aria-valuenow="{{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}"
+                                             aria-valuemin="0" aria-valuemax="100"
+                                             data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%">
                                             {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%
                                         </div>
                                     </div>
@@ -117,46 +117,95 @@
 
 <style>
 .bg-gradient-primary {
-    background: linear-gradient(135deg, #2c3e50, #3498db);
+    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
 }
-
 .bg-gradient-info {
-    background: linear-gradient(135deg, #3498db, #2ecc71);
+    background: linear-gradient(135deg, #3498db, #2ecc71) !important;
 }
-
 .bg-gradient-success {
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
 }
-
+.modern-card {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+    transition: box-shadow 0.3s, transform 0.2s;
+}
+.modern-card:hover {
+    box-shadow: 0 8px 32px #23263a33, 0 1.5px 8px #5c7cfa22;
+    transform: translateY(-4px) scale(1.02);
+}
+.card-header {
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    font-size: 1.15rem;
+}
 .avatar-circle {
-    width: 35px;
-    height: 35px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px #5c7cfa22;
+    border: 2.5px solid #fff;
+    background: linear-gradient(135deg, #5c7cfa 0%, #51cf66 100%);
+    letter-spacing: 1px;
 }
-
 .badge {
-    padding: 0.5em 1em;
-    font-weight: 500;
+    padding: 0.55em 1.2em;
+    font-weight: 600;
+    font-size: 1.01em;
+    border-radius: 1.2em;
+    box-shadow: 0 1px 4px #23263a11;
+    letter-spacing: 0.5px;
 }
-
+.modern-table tbody tr.modern-row {
+    transition: background 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+}
+.modern-table tbody tr.modern-row:hover {
+    background: #f4f6fb !important;
+    box-shadow: 0 2px 12px #5c7cfa11;
+}
 .progress {
-    height: 1.5rem;
-    border-radius: 10px;
+    border-radius: 1.2rem;
     background-color: #e9ecef;
+    box-shadow: 0 1px 4px #23263a11;
 }
-
 .progress-bar {
-    border-radius: 10px;
-    font-weight: 500;
+    border-radius: 1.2rem;
+    font-weight: 600;
+    font-size: 1.01em;
+    transition: width 1.2s cubic-bezier(.68,-0.55,.27,1.55);
 }
-
-.table td {
+.modern-progress .progress-bar {
+    background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%) !important;
+    color: #fff;
+    box-shadow: 0 2px 8px #5c7cfa22;
+}
+.table td, .table th {
     vertical-align: middle;
 }
+@media (max-width: 900px) {
+    .modern-card { border-radius: 1rem !important; }
+    .card-header { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; }
+    .avatar-circle { width: 36px; height: 36px; font-size: 1rem; }
+}
+@media (max-width: 600px) {
+    .modern-card { border-radius: 0.7rem !important; }
+    .card-header { border-top-left-radius: 0.7rem !important; border-top-right-radius: 0.7rem !important; }
+    .avatar-circle { width: 30px; height: 30px; font-size: 0.9rem; }
+    .container-fluid-custom { padding: 0.5rem !important; }
+}
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %} 

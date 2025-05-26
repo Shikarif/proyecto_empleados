@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Sistema de Gestión de Empleados{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -400,9 +401,6 @@
             <a class="nav-link {% if request.endpoint == 'jefes' %}active{% endif %}" href="{{ url_for('jefes') }}"><i class="fas fa-user-shield"></i><span>Jefes</span></a>
             {% endif %}
         </div>
-        <div class="sidebar-footer mt-auto">
-            <span>&copy; 2024</span>
-        </div>
     </nav>
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
@@ -455,13 +453,6 @@
             {% endwith %}
             {% block contenido %}{% endblock %}
         </div>
-        <footer class="footer mt-5">
-            <div class="container">
-                <p class="mb-0">
-                    <i class="fas fa-code"></i> Sistema de Gestión de Empleados &copy; 2024
-                </p>
-            </div>
-        </footer>
     </div>
     <!-- Chat flotante y botón siempre presentes -->
     <div id="chat-flotante" class="chat-flotante-modern" style="position:fixed;bottom:30px;right:30px;z-index:9999;width:440px;max-width:98vw;display:none;box-shadow:0 8px 32px #23263a33;border-radius:22px;overflow:hidden;">
@@ -493,12 +484,12 @@
     <button id="abrir-chat" class="btn btn-primary rounded-circle position-fixed" style="bottom:30px;right:30px;z-index:9998;width:60px;height:60px;display:block;"><i class="fas fa-comments fa-lg"></i><span id="badge-nuevo-chat" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">!</span></button>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery (requerido por DataTables y scripts personalizados) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Tema oscuro -->
     <script src="{{ url_for('static', filename='dark_mode.js') }}"></script>
     <!-- Animaciones y microinteracciones -->
     <script src="{{ url_for('static', filename='animations.js') }}"></script>
-    <!-- jQuery (requerido por DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
@@ -506,141 +497,7 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js"></script>
     <!-- Chart.js JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    {% block scripts %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
-    <script>
-    // Refuerzo de seguridad para evitar errores si algún elemento no existe
-    const chatFlotante = document.getElementById('chat-flotante');
-    const abrirChat = document.getElementById('abrir-chat');
-    const badgeNuevoChat = document.getElementById('badge-nuevo-chat');
-    const chatMensajesGlobal = document.getElementById('chat-mensajes-global');
-    const chatMensajesEquipo = document.getElementById('chat-mensajes-equipo');
-    const formChatGlobal = document.getElementById('form-chat-global');
-    const inputChatGlobal = document.getElementById('input-chat-global');
-    const btnEnviarChatGlobal = document.getElementById('btn-enviar-chat-global');
-    const formChatEquipo = document.getElementById('form-chat-equipo');
-    const inputChatEquipo = document.getElementById('input-chat-equipo');
-    const btnEnviarChatEquipo = document.getElementById('btn-enviar-chat-equipo');
-    let chatAbierto = false;
-    let usuarioActual = '{{ current_user.nombre if current_user.is_authenticated else "Invitado" }}';
-    let equipoId = '{{ current_user.equipo_id if current_user.is_authenticated and current_user.equipo_id else "" }}';
-
-    // Tabs
-    const tabGlobal = document.getElementById('tab-global');
-    const tabEquipo = document.getElementById('tab-equipo');
-    const tabUnderline = document.querySelector('.chat-tab-underline');
-    function moverUnderline(tab) {
-        if (!tabUnderline) return;
-        if (tab === 'global') {
-            tabUnderline.style.left = '0';
-        } else {
-            tabUnderline.style.left = '50%';
-        }
-    }
-    if (tabGlobal && tabEquipo && formChatGlobal) {
-        tabGlobal.addEventListener('click', function() {
-            formChatGlobal.style.display = '';
-            if (formChatEquipo) formChatEquipo.style.display = 'none';
-        });
-        tabEquipo.addEventListener('click', function() {
-            formChatGlobal.style.display = 'none';
-            if (formChatEquipo) formChatEquipo.style.display = '';
-        });
-    }
-
-    function scrollChatAbajoGlobal() { if (chatMensajesGlobal) chatMensajesGlobal.scrollTop = chatMensajesGlobal.scrollHeight; }
-    function scrollChatAbajoEquipo() { if (chatMensajesEquipo) chatMensajesEquipo.scrollTop = chatMensajesEquipo.scrollHeight; }
-    function crearBurbuja(data, propio, color) {
-        return `<div class='mb-1 d-flex ${propio ? 'justify-content-end' : 'justify-content-start'}'>
-            <div class='chat-burbuja p-2 rounded-3 shadow-sm animate__animated animate__fadeIn ${color} ${propio ? 'ms-5' : 'me-5'}' style='max-width:80%;display:inline-block;'>
-                <span class='fw-bold small'>${data.usuario}</span><span class='small text-muted ms-2'>${data.hora}</span><br>
-                <span>${data.mensaje}</span>
-            </div>
-        </div>`;
-    }
-    function mostrarMensajeGlobal(data) {
-        if (!chatMensajesGlobal) return;
-        chatMensajesGlobal.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, data.usuario === usuarioActual ? 'bg-primary text-white' : 'bg-light text-dark'));
-        scrollChatAbajoGlobal();
-        if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
-    }
-    function mostrarMensajeEquipo(data) {
-        if (!chatMensajesEquipo) return;
-        chatMensajesEquipo.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, data.usuario === usuarioActual ? 'bg-success text-white' : 'bg-light text-dark'));
-        scrollChatAbajoEquipo();
-        if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
-    }
-    // Mostrar/ocultar chat flotante
-    if (chatFlotante && abrirChat) {
-        chatFlotante.style.display = 'none';
-        abrirChat.style.display = 'block';
-        abrirChat.onclick = () => {
-            chatFlotante.style.display = 'block';
-            abrirChat.style.display = 'none';
-        };
-        const btnCerrar = chatFlotante.querySelector('.btn-light');
-        if (btnCerrar) btnCerrar.onclick = () => {
-            chatFlotante.style.display = 'none';
-            abrirChat.style.display = 'block';
-        };
-    }
-
-    // SocketIO
-    if (typeof io !== 'undefined' && formChatGlobal && inputChatGlobal && btnEnviarChatGlobal) {
-        const socket = io();
-        socket.on('mensaje', mostrarMensajeGlobal);
-        socket.on('mensaje_equipo', mostrarMensajeEquipo);
-        socket.on('usuario_conectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha conectado.', hora:data.hora}));
-        socket.on('usuario_desconectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha desconectado.', hora:data.hora}));
-
-        // Enviar mensaje global
-        formChatGlobal.onsubmit = function(e) {
-            e.preventDefault();
-            const mensaje = inputChatGlobal.value.trim();
-            if (mensaje.length === 0 || mensaje.length > 200) return;
-            btnEnviarChatGlobal.disabled = true;
-            socket.emit('mensaje', { usuario: usuarioActual, mensaje });
-            inputChatGlobal.value = '';
-            setTimeout(() => btnEnviarChatGlobal.disabled = false, 300);
-        };
-        inputChatGlobal.oninput = function() {
-            btnEnviarChatGlobal.disabled = inputChatGlobal.value.trim().length === 0 || inputChatGlobal.value.length > 200;
-        };
-        // Enviar mensaje equipo
-        if (formChatEquipo && inputChatEquipo && btnEnviarChatEquipo) {
-            formChatEquipo.onsubmit = function(e) {
-                e.preventDefault();
-                const mensaje = inputChatEquipo.value.trim();
-                if (mensaje.length === 0 || mensaje.length > 200) return;
-                btnEnviarChatEquipo.disabled = true;
-                socket.emit('mensaje_equipo', { usuario: usuarioActual, mensaje, equipo_id: equipoId });
-                inputChatEquipo.value = '';
-                setTimeout(() => btnEnviarChatEquipo.disabled = false, 300);
-            };
-            inputChatEquipo.oninput = function() {
-                btnEnviarChatEquipo.disabled = inputChatEquipo.value.trim().length === 0 || inputChatEquipo.value.length > 200;
-            };
-        }
-    }
-    // Animación y soporte modo oscuro
-    function aplicarModoOscuroChat() {
-        document.querySelectorAll('.chat-body').forEach(function(chatBody) {
-            if (document.body.classList.contains('dark-mode')) {
-                chatBody.style.background = '#23272b';
-                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.remove('bg-light','text-dark'));
-                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.add('bg-secondary','text-white'));
-            } else {
-                chatBody.style.background = '#f8f9fa';
-                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.remove('bg-secondary','text-white'));
-                chatBody.querySelectorAll('.chat-burbuja').forEach(b => b.classList.add('bg-light','text-dark'));
-            }
-        });
-    }
-    document.addEventListener('DOMContentLoaded', aplicarModoOscuroChat);
-    document.addEventListener('DOMContentLoaded', scrollChatAbajoGlobal);
-    document.body.addEventListener('classChange', aplicarModoOscuroChat);
-    </script>
-    {% endblock %}
+    {% block scripts %}{% endblock %}
     <script>
         // Sidebar toggle
         const sidebar = document.getElementById('sidebar');

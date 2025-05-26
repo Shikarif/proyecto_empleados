@@ -153,4 +153,74 @@ def actualizar_tiempo_real(tarea_id):
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({'success': True}) 
+    return jsonify({'success': True})
+
+@tareas_bp.route('/tareas/asignar-equitativamente', methods=['GET'])
+def asignar_equitativamente():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    # Obtener tareas pendientes
+    cursor.execute('SELECT * FROM tareas WHERE estado = "pendiente"')
+    tareas_pendientes = cursor.fetchall()
+    # Obtener empleados disponibles (líderes y practicantes)
+    cursor.execute('''
+        SELECT e.id, e.nombre, e.apellido, e.rol, e.equipo_id,
+               COUNT(a.id) as tareas_asignadas
+        FROM empleados e
+        LEFT JOIN asignaciones a ON e.id = a.empleado_id AND a.estado != "completada"
+        WHERE e.rol IN ("lider", "practicante")
+        GROUP BY e.id
+    ''')
+    empleados = cursor.fetchall()
+    # Reparto equitativo: asignar cada tarea al empleado con menos tareas activas
+    sugerencia_plan = []
+    for tarea in tareas_pendientes:
+        empleado_menos_cargado = min(empleados, key=lambda e: e['tareas_asignadas'])
+        sugerencia_plan.append({
+            'tarea_id': tarea['id'],
+            'tarea_titulo': tarea['titulo'],
+            'empleado_id': empleado_menos_cargado['id'],
+            'empleado_nombre': f"{empleado_menos_cargado['nombre']} {empleado_menos_cargado['apellido']}",
+            'empleado_rol': empleado_menos_cargado['rol']
+        })
+        empleado_menos_cargado['tareas_asignadas'] += 1
+    # Agrupar por empleado para el frontend
+    agrupado = {}
+    for asignacion in sugerencia_plan:
+        nombre = asignacion['empleado_nombre']
+        if nombre not in agrupado:
+            agrupado[nombre] = {'nombre': nombre, 'tareas': []}
+        agrupado[nombre]['tareas'].append(asignacion['tarea_titulo'])
+    sugerencia = list(agrupado.values())
+    cursor.close()
+    conn.close()
+    return jsonify({'sugerencia': sugerencia, 'sugerencia_plana': sugerencia_plan})
+
+@tareas_bp.route('/tareas/confirmar-asignacion-equitativa', methods=['POST'])
+def confirmar_asignacion_equitativa():
+    data = request.json
+    asignaciones = data.get('asignaciones', [])
+    if not asignaciones:
+        return jsonify({'success': False, 'message': 'No se recibieron asignaciones.'}), 400
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        for asignacion in asignaciones:
+            tarea_id = asignacion['tarea_id']
+            empleado_id = asignacion['empleado_id']
+            # Insertar en la tabla de asignaciones
+            cursor.execute('''
+                INSERT INTO asignaciones (empleado_id, tarea_id, fecha_asignacion, estado)
+                VALUES (%s, %s, %s, %s)
+            ''', (empleado_id, tarea_id, datetime.now(), 'asignada'))
+            # Actualizar estado de la tarea
+            cursor.execute('UPDATE tareas SET estado = %s WHERE id = %s', ('en_progreso', tarea_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': False, 'message': f'Error al asignar tareas: {str(e)}'}), 500
+    cursor.close()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Tareas asignadas exitosamente.'}) 

@@ -97,3 +97,28 @@ solo con los miembros del equipo nada mas y el jefe va poder visualizar los chat
 ara poder ver su progreso o comunicacion que es una parte muy fundamental para este proyecto, se trata 
 de tener apoyo mutuo de cada uno,  
 
+
+Plan de acción recomendado (por etapas):
+1. Asignación equitativa y flexible
+Permitir que el jefe asigne tareas a líderes, practicantes o equipos completos.
+Permitir que el líder asigne tareas solo a los miembros de su equipo.
+Implementar un sistema de asignación automática que reparta tareas según:
+Carga de trabajo actual (tareas activas).
+Habilidades requeridas vs. habilidades del empleado.
+Disponibilidad de horas.
+Equidad (que nadie esté sobrecargado).
+Guardar el historial de asignaciones.
+2. Adjuntos en tareas
+Permitir subir archivos (Word, PDF, Excel, imágenes) al crear o editar una tarea.
+Permitir que los asignados suban entregables o avances.
+Permitir la descarga y revisión de archivos por parte de líderes y jefes.
+3. Seguimiento y avance
+Estados de tarea: Pendiente, En progreso, En revisión, Completada.
+Porcentaje de avance editable por el asignado.
+Comentarios y feedback en cada tarea.
+Barras de progreso y alertas visuales.
+4. Reportes y dashboard
+Estadísticas de tareas por usuario, equipo, estado, cumplimiento.
+Exportar reportes a Excel/PDF.
+Dashboard visual para jefes y líderes.
+
