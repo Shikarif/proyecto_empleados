@@ -122,3 +122,110 @@ Estadísticas de tareas por usuario, equipo, estado, cumplimiento.
 Exportar reportes a Excel/PDF.
 Dashboard visual para jefes y líderes.
 
+---------------------------------------------------------------------------------
+
+-- Mejoras Funcionales
+1. Adjuntos en tareas
+Permitir subir archivos adjuntos (PDF, Excel, Word, imágenes) al crear o editar tareas.
+Visualización y descarga de los archivos desde la interfaz.
+Almacenamiento seguro de los archivos (en el servidor o en la nube).
+2. Notificaciones y recordatorios
+Notificaciones por email o dentro del sistema cuando se asigna una tarea, se acerca la fecha límite o se completa una tarea.
+Recordatorios automáticos para tareas próximas a vencer.
+3. Comentarios y seguimiento en tareas
+Permitir que los usuarios agreguen comentarios o actualizaciones en cada tarea.
+Historial de cambios y actividad en cada tarea.
+4. Dashboard avanzado y analíticas
+Gráficos de rendimiento por usuario, equipo y global.
+KPIs personalizables.
+Ranking de eficiencia y cumplimiento de tareas.
+7. Mejoras en la gestión de equipos
+Permitir equipos multidisciplinarios (usuarios en más de un equipo).
+Historial de cambios de equipo por usuario.
+8. Plantillas de tareas y proyectos
+Crear plantillas reutilizables para tareas frecuentes o proyectos estándar.
+Duplicar equipos o tableros con toda su estructura.
+-- Mejoras de Diseño y Experiencia de Usuario
+1. Rediseño visual moderno
+Animaciones suaves y microinteracciones en botones, tarjetas y modales.
+Mejorar la responsividad para móviles y tablets.
+3. Personalización
+Permitir a los usuarios elegir su avatar (desde el perfil el usurio)
+8. Mejoras en la gestión de archivos
+Vista previa de archivos adjuntos (PDF, imágenes, etc.) sin necesidad de descarga.
+
+-----------------------
+
+Próximos Pasos Recomendados
+Fase 1 - Archivos y Comentarios
+Implementar subida de archivos
+Sistema de comentarios
+Vista previa de archivos
+Fase 2 - Notificaciones
+Sistema de notificaciones internas
+Integración con email
+Recordatorios automáticos
+Fase 3 - Dashboard
+Gráficos de rendimiento
+KPIs
+Rankings
+Fase 4 - UX/UI
+Rediseño visual
+Sistema de avatares
+Animaciones y transiciones
+
+.kpi-glass-card {
+  background: rgba(24,28,42,0.82);
+  border-radius: 2rem;
+  box-shadow: 0 8px 32px #23294655, 0 2px 8px #00CFFF33;
+  border: 2.5px solid #7F9CF5;
+  backdrop-filter: blur(10px) saturate(1.2);
+  padding: 2.2rem 1.5rem 1.5rem 1.5rem;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-glass-card:hover {
+  box-shadow: 0 20px 48px #00CFFF44, 0 4px 16px #7F9CF544;
+  border: 2.5px solid #00CFFF;
+  transform: translateY(-8px) scale(1.04);
+}
+.kpi-icon-glass {
+  font-size: 2.8rem;
+  color: #00CFFF;
+  margin-bottom: 0.7rem;
+  animation: kpiPulse 1.5s infinite alternate;
+  filter: drop-shadow(0 2px 8px #00CFFF55);
+}
+@keyframes kpiPulse {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.25); }
+}
+.kpi-label-glass {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #7F9CF5;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+}
+.kpi-value-glass {
+  font-size: 2.7rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px #23294655;
+  letter-spacing: 1.5px;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+}
+@keyframes glassPop {
+  from { opacity: 0; transform: scale(0.95);}
+  to { opacity: 1; transform: scale(1);}
+}
+
+¿Quieres sincronización automática?
+Si deseas que el sistema se actualice automáticamente cuando mueves una tarjeta en Trello, necesitas implementar un webhook de Trello o una tarea programada (cron job) que ejecute la sincronización cada cierto tiempo.
+¿Te gustaría que te ayude a implementar la sincronización automática o a mejorar la experiencia de sincronización?

@@ -1,8 +1,94 @@
 {% extends "base_login.html" %}
 
-{% block contenido %}
-<div class="card mt-4">
-    <div class="card-header bg-success text-white">
+{% block content %}
+<style>
+body {
+  background: url("{{ url_for('static', filename='img/fondo4.jpg') }}") no-repeat center center fixed;
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.registro-glass-card {
+  background: rgba(24,28,42,0.97);
+  border-radius: 1.5em;
+  box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33;
+  border: 2px solid #00CFFF33;
+  padding: 2.5em 2.2em 2em 2.2em;
+  max-width: 1100px;
+  width: 100%;
+  margin: 2em auto;
+  color: #fff;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+}
+@keyframes glassPop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.registro-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #43e97b;
+  letter-spacing: 1px;
+  margin-bottom: 1.2em;
+  text-align: center;
+  text-shadow: 0 2px 8px #23263a22;
+}
+.registro-input {
+  border-radius: 0.8em;
+  border: 1.5px solid #00CFFF33;
+  background: rgba(24,28,42,0.85);
+  color: #fff;
+  font-size: 1.08em;
+  margin-bottom: 1.2em;
+  box-shadow: 0 1px 4px #00CFFF11;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.registro-input:focus {
+  border-color: #00CFFF;
+  background: rgba(24,28,42,0.98);
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(0,207,255,0.13);
+}
+.registro-btn {
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.7em 2.2em;
+  box-shadow: 0 2px 8px #00CFFF33;
+  background: linear-gradient(90deg, #43e97b 0%, #00CFFF 100%);
+  color: #232946;
+  border: none;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+  margin-right: 0.7em;
+}
+.registro-btn:hover {
+  background: linear-gradient(90deg, #00CFFF 0%, #43e97b 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #43e97b33;
+}
+.registro-cancelar-btn {
+  background: #343a40;
+  color: #fff;
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.7em 2.2em;
+  box-shadow: 0 2px 8px #23294633;
+  border: none;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+.registro-cancelar-btn:hover {
+  background: #232946;
+  color: #00CFFF;
+  box-shadow: 0 4px 16px #23294644;
+}
+</style>
+
+<div class="card mt-4 registro-glass-card">
+    <div class="card-header bg-success text-white registro-title">
         <i class="fas fa-user-plus"></i> Registrar Nuevo Usuario
     </div>
     <div class="card-body">
@@ -10,23 +96,23 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="nombre" class="form-label">Nombre</label>
-                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                    <input type="text" class="form-control registro-input" id="nombre" name="nombre" required>
                 </div>
                 <div class="col-md-6">
                     <label for="apellido" class="form-label">Apellido</label>
-                    <input type="text" class="form-control" id="apellido" name="apellido" required>
+                    <input type="text" class="form-control registro-input" id="apellido" name="apellido" required>
                 </div>
                 <div class="col-md-6">
                     <label for="correo" class="form-label">Correo Electrónico</label>
-                    <input type="email" class="form-control" id="correo" name="correo" required>
+                    <input type="email" class="form-control registro-input" id="correo" name="correo" required>
                 </div>
                 <div class="col-md-6">
                     <label for="telefono" class="form-label">Teléfono</label>
-                    <input type="text" class="form-control" id="telefono" name="telefono">
+                    <input type="text" class="form-control registro-input" id="telefono" name="telefono">
                 </div>
                 <div class="col-md-6">
                     <label for="equipo_id" class="form-label">Equipo</label>
-                    <select class="form-select" id="equipo_id" name="equipo_id">
+                    <select class="form-select registro-input" id="equipo_id" name="equipo_id">
                         <option value="">Seleccione un equipo</option>
                         {% for equipo in equipos %}
                         <option value="{{ equipo['id'] }}">{{ equipo['nombre'] }}</option>
@@ -35,7 +121,7 @@
                 </div>
                 <div class="col-md-6">
                     <label for="rol" class="form-label">Rol</label>
-                    <select class="form-select" id="rol" name="rol" required>
+                    <select class="form-select registro-input" id="rol" name="rol" required>
                         {% for r in roles %}
                         <option value="{{ r }}">{{ r|capitalize }}</option>
                         {% endfor %}
@@ -43,23 +129,23 @@
                 </div>
                 <div class="col-md-6">
                     <label for="password" class="form-label">Contraseña</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                    <input type="password" class="form-control registro-input" id="password" name="password" required>
                 </div>
                 <div class="col-md-6">
                     <label for="password2" class="form-label">Confirmar Contraseña</label>
-                    <input type="password" class="form-control" id="password2" name="password2" required>
+                    <input type="password" class="form-control registro-input" id="password2" name="password2" required>
                 </div>
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="form-floating mb-3 position-relative">
-                            <input type="text" class="form-control" id="habilidades" name="habilidades" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}">
+                            <input type="text" class="form-control registro-input" id="habilidades" name="habilidades" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}">
                             <label for="habilidades">Habilidades (separadas por coma)</label>
                             <div class="form-text">Escribe y selecciona habilidades existentes o nuevas. Separa con coma.</div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating mb-3 position-relative">
-                            <input type="text" class="form-control" id="fortalezas" name="fortalezas" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}">
+                            <input type="text" class="form-control registro-input" id="fortalezas" name="fortalezas" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}">
                             <label for="fortalezas">Fortalezas (separadas por coma)</label>
                             <div class="form-text">Agrega fortalezas personales o selecciona sugeridas. Separa con coma.</div>
                         </div>
@@ -67,10 +153,10 @@
                 </div>
             </div>
             <div class="mt-4 d-flex justify-content-end">
-                <button type="submit" class="btn btn-success me-2">
-                    <i class="fas fa-save"></i> Registrar
+                <button type="submit" class="btn registro-btn">
+                    <i class="fas fa-save me-2"></i> Registrar
                 </button>
-                <a href="{{ url_for('login') }}" class="btn btn-secondary">
+                <a href="{{ url_for('login') }}" class="btn registro-cancelar-btn">
                     <i class="fas fa-times"></i> Cancelar
                 </a>
             </div>

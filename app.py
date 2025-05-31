@@ -16,6 +16,16 @@ from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
 from helpers import rol_requerido
 from flask_socketio import SocketIO, emit
+import requests
+import logging
+from config import TRELLO_API_KEY, TRELLO_API_TOKEN
+from models import Notification
+from notificaciones_utils import crear_y_emitir_notificacion
+from werkzeug.utils import secure_filename
+import os
+from PIL import Image
+from PIL import UnidentifiedImageError
+from helpers import equipo_requerido
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para los mensajes flash
@@ -51,6 +61,7 @@ def load_user(user_id):
         user.rol = usuario['rol']
         user.telefono = usuario.get('telefono', '')
         user.password = usuario['password']
+        user.equipo_id = usuario.get('equipo_id')
         # Puedes agregar más campos si los necesitas
         return user
     return None
@@ -104,12 +115,31 @@ def editar(id):
         fortalezas = request.form.get('fortalezas', '')
         horas_disponibles = request.form.get('horas_disponibles', 40)
 
+        # Obtener equipo anterior
+        cursor.execute("SELECT equipo_id, correo FROM empleados WHERE id=%s", (id,))
+        row = cursor.fetchone()
+        equipo_anterior = row['equipo_id']
+        correo_anterior = row['correo']
+
         try:
             cursor.execute("""
                 UPDATE empleados 
                 SET nombre=%s, apellido=%s, correo=%s, telefono=%s, equipo_id=%s, rol=%s, habilidades=%s, horas_disponibles=%s
                 WHERE id=%s
             """, (nombre, apellido, correo, telefono, equipo_id, rol, habilidades, horas_disponibles, id))
+            # Si cambió de equipo y era líder/practicante
+            if rol in ['lider', 'practicante'] and equipo_anterior and equipo_anterior != int(equipo_id or 0):
+                # Obtener idBoard del equipo anterior
+                cursor.execute("SELECT idBoard FROM equipos WHERE id=%s", (equipo_anterior,))
+                row = cursor.fetchone()
+                idBoard_anterior = row['idBoard'] if row else None
+                if idBoard_anterior:
+                    eliminar_de_tablero_trello(idBoard_anterior, correo_anterior)
+                # Dejar tareas pendientes sin asignar
+                cursor.execute("""
+                    UPDATE tareas_trello SET empleado_id = NULL
+                    WHERE empleado_id = %s AND estado != 'completada'
+                """, (id,))
             # Actualizar fortalezas
             cursor.execute("DELETE FROM empleado_fortalezas WHERE empleado_id=%s", (id,))
             if rol in ['lider', 'practicante']:
@@ -160,7 +190,22 @@ def editar(id):
 def eliminar(id):
     try:
         conexion = get_connection()
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
+        # Obtener equipo y correo antes de eliminar
+        cursor.execute("SELECT equipo_id, correo FROM empleados WHERE id=%s", (id,))
+        row = cursor.fetchone()
+        equipo_id = row['equipo_id'] if row else None
+        correo = row['correo'] if row else None
+        # Eliminar de Trello si corresponde
+        if equipo_id and correo:
+            cursor.execute("SELECT idBoard FROM equipos WHERE id=%s", (equipo_id,))
+            row = cursor.fetchone()
+            idBoard = row['idBoard'] if row else None
+            if idBoard:
+                eliminar_de_tablero_trello(idBoard, correo)
+        # Dejar tareas pendientes sin asignar
+        cursor.execute("UPDATE tareas_trello SET empleado_id = NULL WHERE empleado_id = %s AND estado != 'completada'", (id,))
+        cursor.execute("DELETE FROM empleados_trello WHERE empleado_id = %s", (id,))
         cursor.execute("DELETE FROM empleados WHERE id=%s", (id,))
         conexion.commit()
         flash('Empleado eliminado exitosamente!', 'success')
@@ -220,39 +265,75 @@ def reiniciar():
     return render_template('reiniciar_confirmar.html')
 
 @app.route('/estadisticas')
+@login_required
 def estadisticas():
     conexion = get_connection()
     cursor = conexion.cursor(dictionary=True)
-    
+    user_rol = current_user.rol
+    user_equipo = current_user.equipo_id
     # Total de empleados (solo líderes y practicantes)
     cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol IN ('lider', 'practicante')")
     total_empleados = cursor.fetchone()['total']
-    
-    # Empleados por equipo (solo líderes y practicantes)
-    cursor.execute("""
-        SELECT e.nombre AS equipo, COUNT(emp.id) as total
-        FROM equipos e
-        LEFT JOIN empleados emp ON emp.equipo_id = e.id AND emp.rol IN ('lider', 'practicante')
-        GROUP BY e.id, e.nombre
-        ORDER BY total DESC
-    """)
-    empleados_por_equipo = cursor.fetchall()
-    
-    # Últimos empleados agregados (solo líderes y practicantes)
-    cursor.execute("""
-        SELECT * FROM empleados 
-        WHERE rol IN ('lider', 'practicante')
-        ORDER BY id DESC 
-        LIMIT 5
-    """)
-    ultimos_agregados = cursor.fetchall()
-    
+    if user_rol == 'practicante':
+        # Practicante: solo ve a su líder y miembros de su equipo
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'practicante' AND e.equipo_id = %s
+            ORDER BY e.nombre, e.apellido
+        """, (user_equipo,))
+        lista_practicantes = cursor.fetchall()
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'lider' AND e.equipo_id = %s
+            ORDER BY e.nombre, e.apellido
+        """, (user_equipo,))
+        lista_lideres = cursor.fetchall()
+    elif user_rol == 'lider':
+        # Líder: ve a los miembros de su equipo y a sí mismo en la lista de líderes
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'practicante' AND e.equipo_id = %s
+            ORDER BY e.nombre, e.apellido
+        """, (user_equipo,))
+        lista_practicantes = cursor.fetchall()
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'lider' AND e.id = %s
+            ORDER BY e.nombre, e.apellido
+        """, (current_user.id,))
+        lista_lideres = cursor.fetchall()
+    else:
+        # Jefe: ve todo
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'practicante'
+            ORDER BY e.nombre, e.apellido
+        """)
+        lista_practicantes = cursor.fetchall()
+        cursor.execute("""
+            SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre AS equipo
+            FROM empleados e
+            LEFT JOIN equipos eq ON e.equipo_id = eq.id
+            WHERE e.rol = 'lider'
+            ORDER BY e.nombre, e.apellido
+        """)
+        lista_lideres = cursor.fetchall()
     conexion.close()
-    
     return render_template('estadisticas.html',
                          total_empleados=total_empleados,
-                         empleados_por_equipo=empleados_por_equipo,
-                         ultimos_agregados=ultimos_agregados)
+                         lista_practicantes=lista_practicantes,
+                         lista_lideres=lista_lideres,
+                         user_rol=user_rol)
 
 @app.route('/equipos')
 def equipos():
@@ -271,27 +352,100 @@ def equipos():
         equipos_con_miembros.append({
             'id': equipo['id'],
             'nombre': equipo['nombre'],
+            'idBoard': equipo.get('idBoard'),  # Añadido el campo idBoard
             'miembros': miembros,
-            'total': len(miembros)
+            'total_miembros': len(miembros)
         })
     conexion.close()
     return render_template('equipos.html', equipos=equipos_con_miembros)
+
+def crear_tablero_trello(nombre_tablero):
+    if not TRELLO_API_KEY or not TRELLO_API_TOKEN or TRELLO_API_KEY == 'TU_API_KEY' or TRELLO_API_TOKEN == 'TU_API_TOKEN':
+        logging.error('API Key o Token de Trello no configurados.')
+        return None, None
+    url = "https://api.trello.com/1/boards/"
+    params = {
+        "name": nombre_tablero,
+        "key": TRELLO_API_KEY,
+        "token": TRELLO_API_TOKEN
+    }
+    response = requests.post(url, params=params)
+    logging.info(f'Respuesta Trello: {response.status_code} {response.text}')
+    if response.status_code == 200:
+        data = response.json()
+        idBoard = data['id']
+        # Crear listas estándar
+        listas_esenciales = ["Lista de tareas", "Pendiente", "En progreso", "Completado"]
+        idListDone = None
+        for nombre_lista in listas_esenciales:
+            url_lista = f"https://api.trello.com/1/boards/{idBoard}/lists"
+            params_lista = {"name": nombre_lista, "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+            resp_lista = requests.post(url_lista, params=params_lista)
+            if resp_lista.status_code == 200 and nombre_lista.lower() in ["completado", "hecho", "done"]:
+                idListDone = resp_lista.json().get('id')
+        # Obtener todas las listas del tablero
+        url_lists = f"https://api.trello.com/1/boards/{idBoard}/lists"
+        params_lists = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+        resp_lists = requests.get(url_lists, params=params_lists)
+        if resp_lists.status_code == 200:
+            listas = resp_lists.json()
+            # Archivar cualquier lista que no sea esencial o que sea duplicada
+            nombres_esenciales = [l.lower() for l in listas_esenciales]
+            listas_por_nombre = {}
+            for lista in listas:
+                nombre_lista = lista['name'].strip().lower()
+                if nombre_lista in nombres_esenciales:
+                    if nombre_lista not in listas_por_nombre:
+                        listas_por_nombre[nombre_lista] = [lista['id']]
+                    else:
+                        listas_por_nombre[nombre_lista].append(lista['id'])
+            # Archivar duplicados (dejar solo una de cada esencial)
+            for nombre, ids in listas_por_nombre.items():
+                for id_duplicada in ids[1:]:
+                    url_archivar = f"https://api.trello.com/1/lists/{id_duplicada}/closed"
+                    params_archivar = {"value": "true", "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+                    requests.put(url_archivar, params=params_archivar)
+            # Archivar cualquier lista que no sea esencial
+            for lista in listas:
+                nombre_lista = lista['name'].strip().lower()
+                if nombre_lista not in nombres_esenciales:
+                    url_archivar = f"https://api.trello.com/1/lists/{lista['id']}/closed"
+                    params_archivar = {"value": "true", "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+                    requests.put(url_archivar, params=params_archivar)
+                if nombre_lista in ['completado', 'hecho', 'done']:
+                    idListDone = lista['id']
+            if not idListDone and listas:
+                idListDone = listas[-1]['id']  # Por defecto, la última lista
+        return idBoard, idListDone
+    else:
+        logging.error(f'Error al crear tablero: {response.text}')
+        return None, None
 
 @app.route('/equipos/nuevo', methods=['GET', 'POST'])
 def agregar_equipo():
     if request.method == 'POST':
         nombre = request.form['nombre']
         try:
+            idBoard, idListDone = crear_tablero_trello(nombre)
+            if not idBoard:
+                flash('No se pudo crear el tablero en Trello. Revisa tu API Key/Token o tu conexión a internet.', 'danger')
+                return redirect(url_for('equipos'))
             conexion = get_connection()
             cursor = conexion.cursor()
-            cursor.execute("INSERT INTO equipos (nombre) VALUES (%s)", (nombre,))
+            # Asegurarse de que la columna idListDone existe
+            try:
+                cursor.execute("ALTER TABLE equipos ADD COLUMN idListDone VARCHAR(64) NULL")
+            except Exception:
+                pass  # Ya existe
+            cursor.execute("INSERT INTO equipos (nombre, idBoard, idListDone) VALUES (%s, %s, %s)", (nombre, idBoard, idListDone))
             conexion.commit()
             conexion.close()
-            flash('Equipo creado exitosamente!', 'success')
+            flash('Equipo y tablero de Trello creados exitosamente!', 'success')
         except Exception as e:
+            logging.error(f'Error al crear equipo: {str(e)}')
             flash(f'Error al crear equipo: {str(e)}', 'danger')
         return redirect(url_for('equipos'))
-    return render_template('agregar_equipo.html')
+    return redirect(url_for('equipos'))
 
 @app.route('/habilidades', methods=['GET', 'POST'])
 def habilidades():
@@ -375,6 +529,32 @@ def editar_competencias(id):
     flash('Competencias actualizadas correctamente.', 'success')
     return redirect(url_for('competencias'))
 
+def invitar_a_tablero_trello(email, idBoard):
+    """Invita a un usuario a un tablero de Trello usando su email."""
+    if not TRELLO_API_KEY or not TRELLO_API_TOKEN:
+        logging.error('API Key o Token de Trello no configurados.')
+        return False
+    
+    url = f"https://api.trello.com/1/boards/{idBoard}/members"
+    params = {
+        "email": email,
+        "type": "normal",
+        "key": TRELLO_API_KEY,
+        "token": TRELLO_API_TOKEN
+    }
+    
+    try:
+        response = requests.put(url, params=params)
+        if response.status_code in [200, 201]:
+            logging.info(f'Usuario {email} invitado exitosamente al tablero {idBoard}')
+            return True
+        else:
+            logging.error(f'Error al invitar usuario a Trello: {response.text}')
+            return False
+    except Exception as e:
+        logging.error(f'Error al invitar usuario a Trello: {str(e)}')
+        return False
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -385,6 +565,7 @@ def login():
         cursor.execute("SELECT * FROM empleados WHERE correo = %s", (correo,))
         usuario = cursor.fetchone()
         conexion.close()
+        
         if usuario and bcrypt.checkpw(password.encode('utf-8'), usuario['password'].encode('utf-8')):
             # Crear instancia de Usuario (UserMixin)
             user = Usuario()
@@ -395,8 +576,11 @@ def login():
             user.rol = usuario['rol']
             user.telefono = usuario.get('telefono', '')
             user.password = usuario['password']
+            user.equipo_id = usuario.get('equipo_id')
+            
             # Autenticar con Flask-Login
             login_user(user)
+            
             # Registrar sesión activa
             conexion = get_connection()
             cursor = conexion.cursor()
@@ -404,6 +588,28 @@ def login():
                 REPLACE INTO sesiones_activas (usuario_id, rol, ultima_actividad)
                 VALUES (%s, %s, %s)
             """, (user.id, user.rol, datetime.now()))
+            
+            # Verificar si el usuario necesita ser invitado a Trello
+            if user.rol in ['lider', 'practicante'] and user.equipo_id:
+                cursor.execute("""
+                    SELECT et.invitado_trello, e.idBoard 
+                    FROM empleados_trello et 
+                    JOIN equipos e ON e.id = %s 
+                    WHERE et.empleado_id = %s
+                """, (user.equipo_id, user.id))
+                resultado = cursor.fetchone()
+                
+                if resultado and not resultado[0] and resultado[1]:
+                    # Invitar al usuario al tablero de Trello
+                    if invitar_a_tablero_trello(user.email, resultado[1]):
+                        cursor.execute("""
+                            UPDATE empleados_trello 
+                            SET invitado_trello = 1 
+                            WHERE empleado_id = %s
+                        """, (user.id,))
+                        conexion.commit()
+                        flash('Has sido invitado automáticamente a tu tablero de Trello.', 'success')
+            
             conexion.commit()
             conexion.close()
             flash('¡Bienvenido, {}! Has iniciado sesión correctamente.'.format(usuario['nombre']), 'success')
@@ -455,12 +661,18 @@ def verificar_competencias():
 
 @app.route('/registrar', methods=['GET', 'POST'])
 def registrar():
-    # Reutiliza la lógica de agregar empleado, pero desde /registrar
     conexion = get_connection()
     cursor = conexion.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM equipos ORDER BY nombre")
-    equipos = cursor.fetchall()
-    roles = ['jefe', 'lider', 'practicante']
+    # Obtener equipos disponibles (solo los que no tienen líder)
+    cursor.execute("""
+        SELECT e.* FROM equipos e
+        LEFT JOIN empleados emp ON e.id = emp.equipo_id AND emp.rol = 'lider'
+        WHERE emp.id IS NULL
+        ORDER BY e.nombre
+    """)
+    equipos_disponibles = cursor.fetchall()
+    # Solo permitir registro de líderes y practicantes
+    roles = ['lider', 'practicante']
     if request.method == 'POST':
         nombre = request.form['nombre']
         apellido = request.form['apellido']
@@ -470,38 +682,44 @@ def registrar():
         rol = request.form.get('rol')
         password = request.form.get('password')
         password2 = request.form.get('password2')
-        
         if password != password2:
             flash('Las contraseñas no coinciden.', 'danger')
-            return render_template('registrar.html', equipos=equipos, roles=roles)
-        
-        if rol == 'jefe':
-            cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol = 'jefe'")
-            total_jefes = cursor.fetchone()['total']
-            if total_jefes >= 4:
-                flash('No se pueden registrar más de 4 jefes.', 'danger')
-                conexion.close()
-                return render_template('registrar.html', equipos=equipos, roles=roles)
-            # Si es jefe, no se asigna equipo
-            equipo_id = None
-        
-        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            return render_template('registrar.html', equipos=equipos_disponibles, roles=roles)
+        if rol == 'lider' and not equipo_id:
+            flash('Los líderes deben ser asignados a un equipo.', 'danger')
+            return render_template('registrar.html', equipos=equipos_disponibles, roles=roles)
+        # Verificar si el equipo ya tiene líder
+        if rol == 'lider' and equipo_id:
+            cursor.execute("""
+                SELECT COUNT(*) as total FROM empleados 
+                WHERE equipo_id = %s AND rol = 'lider'
+            """, (equipo_id,))
+            if cursor.fetchone()['total'] > 0:
+                flash('Este equipo ya tiene un líder asignado.', 'danger')
+                return render_template('registrar.html', equipos=equipos_disponibles, roles=roles)
+        # Verificar si el correo ya existe
+        cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE correo = %s", (correo,))
+        if cursor.fetchone()['total'] > 0:
+            flash('Este correo electrónico ya está registrado.', 'danger')
+            return render_template('registrar.html', equipos=equipos_disponibles, roles=roles)
         try:
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             cursor.execute("""
                 INSERT INTO empleados 
                 (nombre, apellido, correo, telefono, equipo_id, rol, password) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (nombre, apellido, correo, telefono, equipo_id, rol, password_hash))
+            empleado_id = cursor.lastrowid
+            cursor.execute("INSERT INTO empleados_trello (empleado_id, invitado_trello) VALUES (%s, 0)", (empleado_id,))
             conexion.commit()
             flash('¡Registro exitoso, {}! Ahora puedes iniciar sesión.'.format(nombre), 'success')
             return redirect(url_for('login'))
         except Exception as e:
+            conexion.rollback()
             flash(f'Error al registrar: {str(e)}', 'danger')
         finally:
             conexion.close()
-        return redirect(url_for('login'))
-    conexion.close()
-    return render_template('registrar.html', equipos=equipos, roles=roles)
+    return render_template('registrar.html', equipos=equipos_disponibles, roles=roles)
 
 @app.route('/logout')
 def logout():
@@ -518,275 +736,6 @@ def logout():
     logout_user()
     flash('Sesión cerrada correctamente.', 'success')
     return redirect(url_for('login'))
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    # Limpiar sesiones inactivas antes de contar
-    limpiar_sesiones_inactivas()
-    conexion = get_connection()
-    cursor = conexion.cursor(dictionary=True)
-    usuario_id = current_user.id
-    rol = current_user.rol
-    
-    # Obtener información del usuario actual
-    cursor.execute("""
-        SELECT e.*, eq.nombre as equipo_nombre 
-        FROM empleados e 
-        LEFT JOIN equipos eq ON e.equipo_id = eq.id 
-        WHERE e.id = %s
-    """, (usuario_id,))
-    usuario_actual = cursor.fetchone()
-    
-    # Tracking real de usuarios logueados
-    cursor.execute("SELECT rol, COUNT(*) as total FROM sesiones_activas GROUP BY rol")
-    roles_activos = {row['rol']: row['total'] for row in cursor.fetchall()}
-    total_activos = sum(roles_activos.values())
-    
-    # Obtener estadísticas generales (solo líderes y practicantes)
-    cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol IN ('lider', 'practicante')")
-    total_empleados = cursor.fetchone()['total']
-    
-    # Obtener empleados por rol (solo líderes y practicantes)
-    cursor.execute("""
-        SELECT rol, COUNT(*) as total 
-        FROM empleados 
-        WHERE rol IN ('lider', 'practicante')
-        GROUP BY rol
-    """)
-    roles_stats = {row['rol']: row['total'] for row in cursor.fetchall()}
-    
-    # Datos específicos según el rol
-    if rol == 'jefe':
-        # Para jefes: ver todos los equipos y sus miembros (solo líderes y practicantes)
-        cursor.execute("""
-            SELECT e.*, eq.nombre as equipo_nombre 
-            FROM empleados e 
-            LEFT JOIN equipos eq ON e.equipo_id = eq.id 
-            WHERE e.rol IN ('lider', 'practicante')
-            ORDER BY e.nombre
-        """)
-        empleados = cursor.fetchall()
-        # Equipos sin líder
-        cursor.execute("""
-            SELECT eq.*, COUNT(e.id) as total_miembros
-            FROM equipos eq 
-            LEFT JOIN empleados e ON eq.id = e.equipo_id AND e.rol IN ('lider', 'practicante')
-            LEFT JOIN empleados l ON eq.id = l.equipo_id AND l.rol = 'lider'
-            WHERE l.id IS NULL
-            GROUP BY eq.id
-        """)
-        equipos_sin_lider = cursor.fetchall()
-        # Estadísticas de equipos
-        cursor.execute("""
-            SELECT eq.id, eq.nombre,
-                   SUM(CASE WHEN e.rol IN ('lider', 'practicante') THEN 1 ELSE 0 END) as total_miembros,
-                   SUM(CASE WHEN e.rol = 'practicante' THEN 1 ELSE 0 END) as total_practicantes,
-                   MAX(CASE WHEN e.rol = 'lider' THEN 1 ELSE 0 END) as tiene_lider
-            FROM equipos eq
-            LEFT JOIN empleados e ON eq.id = e.equipo_id
-            GROUP BY eq.id, eq.nombre
-        """)
-        stats_equipos = cursor.fetchall()
-        # Tareas por equipo
-        cursor.execute("""
-            SELECT eq.nombre as equipo,
-                   COUNT(t.id) as total_tareas,
-                   SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_completadas
-            FROM equipos eq
-            LEFT JOIN empleados e ON eq.id = e.equipo_id AND e.rol IN ('lider', 'practicante')
-            LEFT JOIN tareas t ON e.id = t.empleado_id
-            GROUP BY eq.id, eq.nombre
-        """)
-        tareas_por_equipo = cursor.fetchall()
-        # KPIs de tareas
-        cursor.execute("SELECT COUNT(*) as total FROM tareas")
-        total_tareas = cursor.fetchone()['total']
-        cursor.execute("SELECT COUNT(*) as total FROM tareas WHERE estado = 'completada'")
-        tareas_completadas = cursor.fetchone()['total']
-        cursor.execute("SELECT COUNT(*) as total FROM tareas WHERE estado != 'completada'")
-        tareas_pendientes = cursor.fetchone()['total']
-        # Eficiencia por equipo
-        cursor.execute("""
-            SELECT eq.nombre,
-                   COUNT(t.id) as total_tareas,
-                   SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_completadas
-            FROM equipos eq
-            LEFT JOIN empleados e ON eq.id = e.equipo_id
-            LEFT JOIN tareas t ON e.id = t.empleado_id
-            GROUP BY eq.id
-        """)
-        nombres_equipos = []
-        eficiencia_equipos = []
-        ranking_equipos = []
-        for row in cursor.fetchall():
-            nombres_equipos.append(row['nombre'])
-            if row['total_tareas'] > 0:
-                eficiencia = int(row['tareas_completadas'] / row['total_tareas'] * 100)
-            else:
-                eficiencia = 0
-            eficiencia_equipos.append(eficiencia)
-            ranking_equipos.append({
-                'nombre': row['nombre'],
-                'eficiencia': eficiencia,
-                'tareas_completadas': row['tareas_completadas'] or 0,
-                'total_tareas': row['total_tareas'] or 0
-            })
-        # Últimos empleados registrados (por id descendente)
-        cursor.execute("""
-            SELECT e.nombre, e.apellido, e.rol, eq.nombre as equipo
-            FROM empleados e
-            LEFT JOIN equipos eq ON e.equipo_id = eq.id
-            WHERE e.rol IN ('lider', 'practicante')
-            ORDER BY e.id DESC
-            LIMIT 8
-        """)
-        ultimos_empleados = cursor.fetchall()
-        # Tareas más recientes
-        cursor.execute("""
-            SELECT t.titulo, t.estado, e.nombre as asignado_nombre, t.fecha_creacion
-            FROM tareas t
-            LEFT JOIN empleados e ON t.empleado_id = e.id
-            ORDER BY t.fecha_creacion DESC
-            LIMIT 5
-        """)
-        tareas_recientes = cursor.fetchall()
-        return render_template('dashboard.html',
-            usuario=usuario_actual,
-            total_empleados=total_empleados or 0,
-            roles_stats=roles_stats or {},
-            empleados=empleados or [],
-            equipos_sin_lider=equipos_sin_lider or [],
-            stats_equipos=stats_equipos or [],
-            tareas_por_equipo=tareas_por_equipo or [],
-            es_jefe=True,
-            total_tareas=total_tareas or 0,
-            tareas_completadas=tareas_completadas or 0,
-            tareas_pendientes=tareas_pendientes or 0,
-            roles_activos=roles_activos or {},
-            total_activos=total_activos or 0,
-            eficiencia_equipos=eficiencia_equipos if eficiencia_equipos else [],
-            nombres_equipos=nombres_equipos if nombres_equipos else [],
-            ranking_equipos=ranking_equipos or [],
-            ultimos_empleados=ultimos_empleados or [],
-            tareas_recientes=tareas_recientes or [],
-            total_equipos=len(nombres_equipos) if nombres_equipos else 0
-        )
-    
-    elif rol == 'lider':
-        # Para líderes: ver su equipo y tareas pendientes
-        cursor.execute("""
-            SELECT e.* 
-            FROM empleados e 
-            WHERE e.equipo_id = %s AND e.rol = 'practicante'
-        """, (usuario_actual['equipo_id'],))
-        miembros_equipo = cursor.fetchall()
-        
-        # Obtener tareas pendientes del equipo
-        cursor.execute("""
-            SELECT t.*, e.nombre as asignado_nombre, e.apellido as asignado_apellido
-            FROM tareas t
-            LEFT JOIN empleados e ON t.empleado_id = e.id
-            WHERE e.equipo_id = %s AND t.estado != 'completada'
-            ORDER BY t.fecha_limite ASC
-        """, (usuario_actual['equipo_id'],))
-        tareas_pendientes = cursor.fetchall()
-        
-        # Obtener estadísticas de rendimiento por miembro (solo practicantes)
-        cursor.execute("""
-            SELECT e.id, e.nombre, e.apellido,
-                   COUNT(t.id) as total_tareas,
-                   SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_completadas,
-                   AVG(CASE WHEN t.estado = 'completada' THEN 
-                       TIMESTAMPDIFF(HOUR, t.fecha_creacion, t.fechaCompletado)
-                   ELSE NULL END) as tiempo_promedio
-            FROM empleados e
-            LEFT JOIN tareas t ON e.id = t.empleado_id
-            WHERE e.equipo_id = %s AND e.rol = 'practicante'
-            GROUP BY e.id, e.nombre, e.apellido
-        """, (usuario_actual['equipo_id'],))
-        rendimiento_miembros = cursor.fetchall()
-        
-        # Obtener tareas próximas a vencer
-        cursor.execute("""
-            SELECT t.*, e.nombre as asignado_nombre, e.apellido as asignado_apellido
-            FROM tareas t
-            LEFT JOIN empleados e ON t.empleado_id = e.id
-            WHERE e.equipo_id = %s 
-            AND t.estado != 'completada'
-            AND t.fecha_limite BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 3 DAY)
-            ORDER BY t.fecha_limite ASC
-        """, (usuario_actual['equipo_id'],))
-        tareas_proximas = cursor.fetchall()
-        
-        return render_template('dashboard.html',
-            usuario=usuario_actual,
-            total_empleados=total_empleados or 0,
-            roles_stats=roles_stats or {},
-            miembros_equipo=miembros_equipo or [],
-            tareas_pendientes=tareas_pendientes or [],
-            rendimiento_miembros=rendimiento_miembros or [],
-            tareas_proximas=tareas_proximas or [],
-            es_lider=True,
-            total_tareas=0,
-            tareas_completadas=0,
-            roles_activos=roles_activos or {},
-            total_activos=total_activos or 0,
-            eficiencia_equipos=[],
-            nombres_equipos=[],
-            ranking_equipos=[],
-            ultimos_empleados=[],
-            tareas_recientes=[],
-            total_equipos=0
-        )
-    
-    else:  # practicante
-        # Para practicantes: ver sus tareas y progreso
-        cursor.execute("""
-            SELECT t.* 
-            FROM tareas t 
-            WHERE t.empleado_id = %s 
-            ORDER BY t.fecha_limite ASC
-        """, (usuario_id,))
-        mis_tareas = cursor.fetchall()
-        
-        # Calcular estadísticas de tareas
-        total_tareas = len(mis_tareas)
-        tareas_completadas = sum(1 for t in mis_tareas if t['estado'] == 'completada')
-        tareas_pendientes = sum(1 for t in mis_tareas if t['estado'] != 'completada')
-        
-        # Obtener tareas próximas a vencer
-        cursor.execute("""
-            SELECT t.*
-            FROM tareas t
-            WHERE t.empleado_id = %s 
-            AND t.estado != 'completada'
-            AND t.fecha_limite BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 3 DAY)
-            ORDER BY t.fecha_limite ASC
-        """, (usuario_id,))
-        tareas_proximas = cursor.fetchall()
-        
-        return render_template('dashboard.html',
-            usuario=usuario_actual,
-            total_empleados=total_empleados or 0,
-            roles_stats=roles_stats or {},
-            mis_tareas=mis_tareas or [],
-            total_tareas=total_tareas or 0,
-            tareas_completadas=tareas_completadas or 0,
-            tareas_pendientes=tareas_pendientes or 0,
-            tareas_proximas=tareas_proximas or [],
-            es_practicante=True,
-            roles_activos=roles_activos or {},
-            total_activos=total_activos or 0,
-            eficiencia_equipos=[],
-            nombres_equipos=[],
-            ranking_equipos=[],
-            ultimos_empleados=[],
-            tareas_recientes=[],
-            total_equipos=0
-        )
-    
-    conexion.close()
 
 @app.route('/perfil')
 @login_required
@@ -879,20 +828,14 @@ def eliminar_equipo(id):
     try:
         conexion = get_connection()
         cursor = conexion.cursor()
-        cursor.execute("SELECT COUNT(*) FROM empleados WHERE equipo_id = %s", (id,))
-        empleados_count = cursor.fetchone()[0]
-        if empleados_count > 0:
-            conexion.close()
-            flash('No se puede eliminar un equipo con miembros asociados.', 'danger')
-            return redirect(url_for('jefes'))
-        cursor.execute("DELETE FROM equipos WHERE id = %s", (id,))
+        cursor.execute("DELETE FROM empleados WHERE id=%s", (id,))
         conexion.commit()
-        conexion.close()
-        flash('Equipo eliminado con éxito.', 'success')
-        return redirect(url_for('jefes'))
+        flash('Empleado eliminado exitosamente!', 'success')
     except Exception as e:
-        flash(f'Error al eliminar equipo: {str(e)}', 'danger')
-        return redirect(url_for('jefes'))
+        flash(f'Error al eliminar empleado: {str(e)}', 'danger')
+    finally:
+        conexion.close()
+    return redirect(url_for('index'))
 
 @app.route('/jefes', methods=['GET'])
 @login_required
@@ -922,8 +865,27 @@ def jefes():
     # Obtener líderes disponibles para asignar
     cursor.execute("SELECT id, nombre, apellido FROM empleados WHERE rol = 'lider' AND equipo_id IS NULL ORDER BY nombre")
     lideres_disponibles = cursor.fetchall()
+    # Obtener todos los empleados líderes y practicantes con su equipo y estado de invitación
+    cursor.execute("""
+        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, et.invitado_trello
+        FROM empleados e
+        LEFT JOIN equipos eq ON e.equipo_id = eq.id
+        LEFT JOIN empleados_trello et ON e.id = et.empleado_id
+        WHERE e.rol IN ('lider', 'practicante')
+        ORDER BY e.nombre, e.apellido
+    """)
+    empleados_equipo = cursor.fetchall()
+    # KPIs: usuarios logueados por rol
+    cursor.execute("SELECT rol, COUNT(*) as total FROM sesiones_activas GROUP BY rol")
+    roles_activos = {row['rol']: row['total'] for row in cursor.fetchall()}
+    total_activos = sum(roles_activos.values())
+    # Total empleados y equipos
+    cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol IN ('lider', 'practicante')")
+    total_empleados = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) as total FROM equipos")
+    total_equipos = cursor.fetchone()['total']
     conexion.close()
-    return render_template('jefes.html', jefes=jefes, usuarios_disponibles=usuarios_disponibles, equipos=equipos, lideres_disponibles=lideres_disponibles)
+    return render_template('jefes.html', jefes=jefes, usuarios_disponibles=usuarios_disponibles, equipos=equipos, lideres_disponibles=lideres_disponibles, empleados_equipo=empleados_equipo, roles_activos=roles_activos, total_activos=total_activos, total_empleados=total_empleados, total_equipos=total_equipos)
 
 @app.route('/jefes/crear_equipo', methods=['POST'])
 @login_required
@@ -964,10 +926,31 @@ def asignar_lider():
         flash('Debe seleccionar un equipo y un líder.', 'danger')
         return redirect(url_for('jefes'))
     conexion = get_connection()
-    cursor = conexion.cursor()
+    cursor = conexion.cursor(dictionary=True)
     try:
-        cursor.execute("UPDATE empleados SET equipo_id = %s WHERE id = %s AND rol = 'lider'", (equipo_id, lider_id))
-        conexion.commit()
+        # Validar que el equipo no tenga ya 2 líderes
+        cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE equipo_id = %s AND rol = 'lider'", (equipo_id,))
+        total_lideres = cursor.fetchone()['total']
+        if total_lideres >= 2:
+            flash('Este equipo ya tiene 2 líderes asignados.', 'danger')
+            conexion.close()
+            return redirect(url_for('jefes'))
+        # Obtener el usuario seleccionado
+        cursor.execute("SELECT id, nombre, apellido, rol FROM empleados WHERE id = %s AND rol IN ('lider', 'practicante')", (lider_id,))
+        usuario = cursor.fetchone()
+        if not usuario:
+            flash('Usuario no válido para ser líder.', 'danger')
+            conexion.close()
+            return redirect(url_for('jefes'))
+        # Si es practicante, actualizar a líder
+        if usuario['rol'] == 'practicante':
+            cursor.execute("UPDATE empleados SET rol = 'lider', equipo_id = %s WHERE id = %s", (equipo_id, lider_id))
+            conexion.commit()
+            crear_y_emitir_notificacion(lider_id, 'Has sido promovido a Líder y asignado a un equipo.', 'rol')
+        else:
+            cursor.execute("UPDATE empleados SET equipo_id = %s WHERE id = %s AND rol = 'lider'", (equipo_id, lider_id))
+            conexion.commit()
+            crear_y_emitir_notificacion(lider_id, 'Has sido asignado como Líder a un equipo.', 'rol')
         flash('Líder asignado correctamente al equipo.', 'success')
     except Exception as e:
         conexion.rollback()
@@ -1207,7 +1190,7 @@ def reportes():
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
     # Construir consulta dinámica
-    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas_trello t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
     params = []
     if equipo_id:
         sql += " AND eq.id = %s"
@@ -1247,7 +1230,7 @@ def exportar_reporte_excel():
     prioridad = request.args.get('prioridad')
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
-    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas_trello t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
     params = []
     if equipo_id:
         sql += " AND eq.id = %s"
@@ -1300,7 +1283,7 @@ def exportar_reporte_pdf():
     prioridad = request.args.get('prioridad')
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
-    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
+    sql = "SELECT t.*, e.nombre as empleado_nombre, e.apellido as empleado_apellido, eq.nombre as equipo_nombre FROM tareas_trello t LEFT JOIN empleados e ON t.empleado_id = e.id LEFT JOIN equipos eq ON e.equipo_id = eq.id WHERE 1=1"
     params = []
     if equipo_id:
         sql += " AND eq.id = %s"
@@ -1354,6 +1337,36 @@ def exportar_reporte_pdf():
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name="reporte_tareas.pdf", mimetype="application/pdf")
 
+@app.route('/equipos/<int:equipo_id>')
+@login_required
+@equipo_requerido
+def vista_equipo(equipo_id):
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener datos del equipo
+    cursor.execute("SELECT * FROM equipos WHERE id = %s", (equipo_id,))
+    equipo = cursor.fetchone()
+    if not equipo:
+        conexion.close()
+        flash('Equipo no encontrado.', 'danger')
+        return redirect(url_for('equipos'))
+    # Obtener miembros del equipo
+    cursor.execute("SELECT * FROM empleados WHERE equipo_id = %s AND rol IN ('lider', 'practicante') ORDER BY rol, nombre", (equipo_id,))
+    miembros = cursor.fetchall()
+    # Obtener tareas del equipo
+    cursor.execute("""
+        SELECT t.*, e.nombre as asignado_nombre, e.apellido as asignado_apellido
+        FROM tareas_trello t
+        LEFT JOIN empleados e ON t.empleado_id = e.id
+        WHERE t.equipo_id = %s
+        ORDER BY t.fecha_limite ASC
+    """, (equipo_id,))
+    tareas = cursor.fetchall()
+    # Obtener mensajes del equipo (simulado, puedes adaptar a tu modelo real)
+    mensajes = []
+    conexion.close()
+    return render_template('equipos/vista_equipo.html', equipo=equipo, miembros=miembros, tareas=tareas, mensajes=mensajes)
+
 # Evento de conexión
 @socketio.on('connect')
 def handle_connect():
@@ -1395,6 +1408,598 @@ def handle_mensaje_equipo(data):
         return
     hora = datetime.now().strftime('%H:%M')
     emit('mensaje_equipo', {'usuario': usuario, 'mensaje': mensaje, 'hora': hora}, room=f'equipo_{equipo_id}')
+
+@app.route('/trello')
+def trello_panel():
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener todos los equipos con tablero Trello
+    cursor.execute("SELECT * FROM equipos WHERE idBoard IS NOT NULL ORDER BY nombre")
+    equipos = cursor.fetchall()
+    equipos_con_tareas = []
+    for equipo in equipos:
+        # Obtener miembros del equipo
+        cursor.execute("SELECT id, nombre, apellido FROM empleados WHERE equipo_id = %s AND rol IN ('lider', 'practicante') ORDER BY nombre", (equipo['id'],))
+        miembros = cursor.fetchall()
+        # Obtener tareas del equipo
+        cursor.execute("""
+            SELECT t.*, e.nombre as asignado_nombre, e.apellido as asignado_apellido
+            FROM tareas_trello t
+            LEFT JOIN empleados e ON t.empleado_id = e.id
+            WHERE t.equipo_id = %s
+            ORDER BY t.fecha_limite ASC
+        """, (equipo['id'],))
+        tareas = cursor.fetchall()
+        equipos_con_tareas.append({
+            'id': equipo['id'],
+            'nombre': equipo['nombre'],
+            'idBoard': equipo['idBoard'],
+            'miembros': miembros,
+            'tareas': tareas
+        })
+    conexion.close()
+    return render_template('trello/panel.html', equipos=equipos_con_tareas)
+
+@app.route('/trello/miembros/<int:equipo_id>', methods=['GET', 'POST'])
+def gestionar_miembros_equipo(equipo_id):
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener datos del equipo
+    cursor.execute("SELECT * FROM equipos WHERE id = %s", (equipo_id,))
+    equipo = cursor.fetchone()
+    # Obtener miembros actuales
+    cursor.execute("SELECT id, nombre, apellido, rol FROM empleados WHERE equipo_id = %s AND rol IN ('lider', 'practicante') ORDER BY nombre", (equipo_id,))
+    miembros = cursor.fetchall()
+    # Obtener usuarios disponibles (no asignados a ningún equipo)
+    cursor.execute("SELECT id, nombre, apellido, rol FROM empleados WHERE equipo_id IS NULL AND rol IN ('lider', 'practicante') ORDER BY nombre", ())
+    disponibles = cursor.fetchall()
+    if request.method == 'POST':
+        quitar_id = request.form.get('quitar_miembro_id')
+        if quitar_id:
+            cursor2 = conexion.cursor()
+            cursor2.execute("UPDATE empleados SET equipo_id = NULL WHERE id = %s", (quitar_id,))
+            conexion.commit()
+            cursor2.close()
+            conexion.close()
+            flash('Miembro quitado correctamente.', 'success')
+            return redirect(url_for('gestionar_miembros_equipo', equipo_id=equipo_id))
+        nuevos_miembros = request.form.getlist('miembros')
+        # Quitar todos los miembros actuales
+        cursor2 = conexion.cursor()
+        cursor2.execute("UPDATE empleados SET equipo_id = NULL WHERE equipo_id = %s AND rol IN ('lider', 'practicante')", (equipo_id,))
+        # Asignar los seleccionados
+        for miembro_id in nuevos_miembros:
+            cursor2.execute("UPDATE empleados SET equipo_id = %s WHERE id = %s", (equipo_id, miembro_id))
+        conexion.commit()
+        cursor2.close()
+        conexion.close()
+        flash('Miembros actualizados correctamente.', 'success')
+        return redirect(url_for('gestionar_miembros_equipo', equipo_id=equipo_id))
+    conexion.close()
+    return render_template('trello/gestionar_miembros.html', equipo=equipo, miembros=miembros, disponibles=disponibles)
+
+@app.route('/equipos/sincronizar_trello', methods=['POST'])
+@login_required
+def sincronizar_equipos_trello():
+    if current_user.rol != 'jefe':
+        flash('Acceso restringido solo para jefes.', 'danger')
+        return redirect(url_for('equipos'))
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # 1. Importar tableros existentes en Trello
+    url = f"https://api.trello.com/1/members/me/boards"
+    params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN, "fields": "name"}
+    response = requests.get(url, params=params)
+    tableros = response.json() if response.status_code == 200 else []
+    # Obtener todos los idBoard ya registrados
+    cursor.execute("SELECT idBoard FROM equipos WHERE idBoard IS NOT NULL AND idBoard != ''")
+    idboards_local = set(row['idBoard'] for row in cursor.fetchall())
+    total_importados = 0
+    for tablero in tableros:
+        idBoard = tablero.get('id')
+        nombre = tablero.get('name')
+        if idBoard:
+            # Verificar si el idBoard ya existe
+            if idBoard in idboards_local:
+                continue
+            # Verificar si el nombre ya existe y agregar sufijo si es necesario
+            nombre_final = nombre
+            sufijo = 2
+            while True:
+                cursor.execute("SELECT COUNT(*) as total FROM equipos WHERE nombre = %s", (nombre_final,))
+                if cursor.fetchone()['total'] == 0:
+                    break
+                nombre_final = f"{nombre} ({sufijo})"
+                sufijo += 1
+            cursor.execute("INSERT INTO equipos (nombre, idBoard) VALUES (%s, %s)", (nombre_final, idBoard))
+            conexion.commit()
+            total_importados += 1
+    # 2. Lógica original: crear tableros en Trello para equipos locales sin tablero
+    cursor.execute("SELECT * FROM equipos WHERE idBoard IS NULL OR idBoard = ''")
+    equipos_sin_trello = cursor.fetchall()
+    total_creados = 0
+    for equipo in equipos_sin_trello:
+        idBoard, idListDone = crear_tablero_trello(equipo['nombre'])
+        if idBoard:
+            cursor2 = conexion.cursor()
+            cursor2.execute("UPDATE equipos SET idBoard = %s, idListDone = %s WHERE id = %s", (idBoard, idListDone, equipo['id']))
+            conexion.commit()
+            cursor2.close()
+            total_creados += 1
+    conexion.close()
+    flash(f'Se importaron {total_importados} tableros de Trello y se sincronizaron {total_creados} equipos locales.', 'success')
+    return redirect(url_for('equipos'))
+
+@app.route('/equipos/editar_trello/<int:equipo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_equipo_trello(equipo_id):
+    if current_user.rol != 'jefe':
+        flash('Acceso restringido solo para jefes.', 'danger')
+        return redirect(url_for('equipos'))
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM equipos WHERE id = %s", (equipo_id,))
+    equipo = cursor.fetchone()
+    if not equipo:
+        conexion.close()
+        flash('Equipo no encontrado.', 'danger')
+        return redirect(url_for('equipos'))
+    if request.method == 'POST':
+        nuevo_nombre = request.form.get('nombre')
+        if nuevo_nombre and nuevo_nombre != equipo['nombre']:
+            # Actualizar en Trello
+            if equipo['idBoard']:
+                url = f"https://api.trello.com/1/boards/{equipo['idBoard']}"
+                params = {"name": nuevo_nombre, "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+                resp = requests.put(url, params=params)
+                if resp.status_code != 200:
+                    flash('No se pudo actualizar el nombre en Trello.', 'danger')
+            # Actualizar en BD
+            cursor.execute("UPDATE equipos SET nombre = %s WHERE id = %s", (nuevo_nombre, equipo_id))
+            conexion.commit()
+            flash('Nombre de equipo actualizado correctamente.', 'success')
+        conexion.close()
+        return redirect(url_for('equipos'))
+    conexion.close()
+    return render_template('equipos/editar_trello.html', equipo=equipo)
+
+@app.route('/equipos/eliminar_trello/<int:equipo_id>', methods=['POST'])
+@login_required
+def eliminar_equipo_trello(equipo_id):
+    if current_user.rol != 'jefe':
+        return jsonify(success=False, message='Acceso restringido solo para jefes.'), 403
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM equipos WHERE id = %s", (equipo_id,))
+    equipo = cursor.fetchone()
+    if not equipo:
+        conexion.close()
+        return jsonify(success=False, message='Equipo no encontrado.'), 404
+    # Eliminar en Trello
+    if equipo['idBoard']:
+        url = f"https://api.trello.com/1/boards/{equipo['idBoard']}"
+        params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+        resp = requests.delete(url, params=params)
+        if resp.status_code not in [200, 202, 204]:
+            conexion.close()
+            return jsonify(success=False, message='No se pudo eliminar el tablero en Trello.'), 500
+    # Eliminar en BD
+    try:
+        cursor.execute("DELETE FROM equipos WHERE id = %s", (equipo_id,))
+        conexion.commit()
+        conexion.close()
+        return jsonify(success=True)
+    except Exception as e:
+        conexion.rollback()
+        conexion.close()
+        return jsonify(success=False, message=f'Error al eliminar en la base de datos: {str(e)}'), 500
+
+@app.route('/empleados/resetear_invitacion_trello/<int:empleado_id>', methods=['POST'])
+@login_required
+@rol_requerido('jefe')
+def resetear_invitacion_trello(empleado_id):
+    conexion = get_connection()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("UPDATE empleados_trello SET invitado_trello = 0 WHERE empleado_id = %s", (empleado_id,))
+        conexion.commit()
+        flash('La invitación a Trello ha sido reseteada. El usuario será invitado nuevamente al ingresar.', 'success')
+    except Exception as e:
+        conexion.rollback()
+        flash(f'Error al resetear invitación: {str(e)}', 'danger')
+    finally:
+        conexion.close()
+    return redirect(url_for('index'))
+
+def inicializar_tabla_empleados_trello():
+    """Inicializa la tabla empleados_trello si no existe."""
+    conexion = get_connection()
+    cursor = conexion.cursor()
+    try:
+        # Crear la tabla si no existe
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS empleados_trello (
+                empleado_id INT PRIMARY KEY,
+                invitado_trello BOOLEAN DEFAULT 0,
+                FOREIGN KEY (empleado_id) REFERENCES empleados(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Insertar registros para empleados que no tengan uno
+        cursor.execute("""
+            INSERT IGNORE INTO empleados_trello (empleado_id, invitado_trello)
+            SELECT id, 0 FROM empleados
+            WHERE id NOT IN (SELECT empleado_id FROM empleados_trello)
+        """)
+        
+        conexion.commit()
+        logging.info('Tabla empleados_trello inicializada correctamente')
+    except Exception as e:
+        logging.error(f'Error al inicializar tabla empleados_trello: {str(e)}')
+        conexion.rollback()
+    finally:
+        cursor.close()
+        conexion.close()
+
+# Inicializar la tabla al arrancar la aplicación
+inicializar_tabla_empleados_trello()
+
+# Función auxiliar para obtener el idMember de Trello por correo
+def obtener_id_member_trello(email):
+    url = f"https://api.trello.com/1/members/{email}"
+    params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+    resp = requests.get(url, params=params)
+    if resp.status_code == 200:
+        return resp.json().get('id')
+    return None
+
+# Función para eliminar un miembro de un tablero Trello
+def eliminar_de_tablero_trello(idBoard, email):
+    idMember = obtener_id_member_trello(email)
+    if not idMember:
+        return False
+    url = f"https://api.trello.com/1/boards/{idBoard}/members/{idMember}"
+    params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+    resp = requests.delete(url, params=params)
+    return resp.status_code in [200, 204]
+
+@app.route('/jefes/crear_jefe', methods=['POST'])
+@login_required
+def crear_jefe():
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    correo = request.form.get('correo')
+    password = request.form.get('password')
+
+    if not (nombre and apellido and correo and password):
+        flash('Todos los campos son obligatorios.', 'danger')
+        return redirect(url_for('jefes'))
+
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Validar límite de jefes (máximo 4 por ahora)
+    cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol = 'jefe'")
+    total_jefes = cursor.fetchone()['total']
+    if total_jefes >= 4:
+        flash('No se pueden registrar más de 4 jefes. Elimine uno para agregar otro.', 'danger')
+        conexion.close()
+        return redirect(url_for('jefes'))
+    # Validar correo único
+    cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE correo = %s", (correo,))
+    if cursor.fetchone()['total'] > 0:
+        flash('El correo electrónico ya está registrado.', 'danger')
+        conexion.close()
+        return redirect(url_for('jefes'))
+    try:
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cursor.execute("""
+            INSERT INTO empleados (nombre, apellido, correo, rol, password)
+            VALUES (%s, %s, %s, 'jefe', %s)
+        """, (nombre, apellido, correo, password_hash))
+        conexion.commit()
+        flash('Jefe creado exitosamente.', 'success')
+    except Exception as e:
+        conexion.rollback()
+        flash(f'Error al crear jefe: {str(e)}', 'danger')
+    finally:
+        conexion.close()
+    return redirect(url_for('jefes'))
+
+@app.route('/equipos/normalizar_listas_trello', methods=['POST'])
+@login_required
+def normalizar_listas_trello():
+    if current_user.rol != 'jefe':
+        flash('Acceso restringido solo para jefes.', 'danger')
+        return redirect(url_for('equipos'))
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT id, nombre, idBoard FROM equipos WHERE idBoard IS NOT NULL")
+    equipos = cursor.fetchall()
+    total_normalizados = 0
+    listas_esenciales = ["lista de tareas", "pendiente", "en progreso", "completado"]
+    for equipo in equipos:
+        idBoard = equipo['idBoard']
+        # Obtener listas actuales
+        url_lists = f"https://api.trello.com/1/boards/{idBoard}/lists"
+        params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+        resp = requests.get(url_lists, params=params)
+        if resp.status_code != 200:
+            continue
+        listas_actuales = resp.json()
+        nombres_actuales = [l['name'].strip().lower() for l in listas_actuales]
+        # Eliminar listas que no sean esenciales
+        for lista in listas_actuales:
+            nombre_lista = lista['name'].strip().lower()
+            if nombre_lista not in listas_esenciales:
+                # Archivar la lista (Trello no permite eliminar, solo archivar)
+                url_archivar = f"https://api.trello.com/1/lists/{lista['id']}/closed"
+                params_archivar = {"value": "true", "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+                requests.put(url_archivar, params=params_archivar)
+        # Crear las listas esenciales que falten
+        for nombre_lista in listas_esenciales:
+            if nombre_lista not in nombres_actuales:
+                url_lista = f"https://api.trello.com/1/boards/{idBoard}/lists"
+                params_lista = {"name": nombre_lista, "key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+                resp_lista = requests.post(url_lista, params=params_lista)
+                if resp_lista.status_code == 200:
+                    total_normalizados += 1
+    conexion.close()
+    flash(f'Se normalizaron las listas en {total_normalizados} tableros/equipos.', 'success')
+    return redirect(url_for('equipos'))
+
+@app.route('/api/notificaciones', methods=['GET'])
+@login_required
+def get_notificaciones():
+    notifs = Notification.query.filter_by(usuario_id=current_user.id).order_by(Notification.fecha.desc()).limit(20).all()
+    return jsonify([
+        {
+            'id': n.id,
+            'mensaje': n.mensaje,
+            'tipo': n.tipo,
+            'leido': n.leido,
+            'fecha': n.fecha.strftime('%Y-%m-%d %H:%M')
+        } for n in notifs
+    ])
+
+@app.route('/api/notificaciones/<int:notif_id>/leer', methods=['POST'])
+@login_required
+def marcar_notificacion_leida(notif_id):
+    notif = Notification.query.filter_by(id=notif_id, usuario_id=current_user.id).first_or_404()
+    notif.leido = True
+    from . import db
+    db.session.commit()
+    # Emitir evento por socket al usuario
+    socketio.emit(f'notificacion_leida_{current_user.id}', {'id': notif.id})
+    return jsonify({'success': True})
+
+@app.route('/api/notificaciones/<int:notif_id>', methods=['DELETE'])
+@login_required
+def eliminar_notificacion(notif_id):
+    notif = Notification.query.filter_by(id=notif_id, usuario_id=current_user.id).first_or_404()
+    from . import db
+    db.session.delete(notif)
+    db.session.commit()
+    # Emitir evento por socket al usuario
+    socketio.emit(f'notificacion_eliminada_{current_user.id}', {'id': notif.id})
+    return jsonify({'success': True})
+
+@app.route('/subir_avatar', methods=['POST'])
+@login_required
+def subir_avatar():
+    file = request.files.get('avatar')
+    if not file:
+        flash('No se seleccionó ningún archivo.', 'danger')
+        return redirect(url_for('perfil'))
+    if file.filename == '':
+        flash('Nombre de archivo inválido.', 'danger')
+        return redirect(url_for('perfil'))
+    if not (file.filename.lower().endswith('.jpg') or file.filename.lower().endswith('.jpeg') or file.filename.lower().endswith('.png')):
+        flash('Solo se permiten imágenes JPG o PNG.', 'danger')
+        return redirect(url_for('perfil'))
+    if file.content_length and file.content_length > 1*1024*1024:
+        flash('La imagen no debe superar 1MB.', 'danger')
+        return redirect(url_for('perfil'))
+    try:
+        from PIL import Image, UnidentifiedImageError
+        filename = f"avatars/{current_user.id}.png"
+        path = os.path.join('proyecto_empleados/static/img', filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        # Procesar imagen: abrir desde stream, validar formato
+        file.stream.seek(0)
+        try:
+            img = Image.open(file.stream)
+            img.verify()  # Verifica que sea una imagen válida
+        except UnidentifiedImageError:
+            flash('El archivo no es una imagen válida.', 'danger')
+            return redirect(url_for('perfil'))
+        file.stream.seek(0)
+        img = Image.open(file.stream).convert('RGB')
+        min_side = min(img.size)
+        left = (img.width - min_side) // 2
+        top = (img.height - min_side) // 2
+        img = img.crop((left, top, left+min_side, top+min_side))
+        img = img.resize((300, 300))
+        img.save(path, format='PNG', quality=90)
+        # Actualizar ruta en la base de datos directamente
+        from db_config import get_connection
+        conexion = get_connection()
+        cursor = conexion.cursor()
+        cursor.execute("UPDATE empleados SET avatar_url = %s WHERE id = %s", (f"img/{filename}", current_user.id))
+        conexion.commit()
+        conexion.close()
+        # Recargar usuario en sesión para reflejar el avatar
+        from flask_login import login_user
+        from db_config import get_connection
+        conexion = get_connection()
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM empleados WHERE id = %s", (current_user.id,))
+        usuario = cursor.fetchone()
+        conexion.close()
+        if usuario:
+            user = Usuario()
+            user.id = usuario['id']
+            user.nombre = usuario['nombre']
+            user.apellido = usuario['apellido']
+            user.email = usuario['correo']
+            user.rol = usuario['rol']
+            user.telefono = usuario.get('telefono', '')
+            user.password = usuario['password']
+            user.equipo_id = usuario.get('equipo_id')
+            user.avatar_url = usuario.get('avatar_url')
+            login_user(user)
+        flash('Avatar actualizado correctamente.', 'success')
+    except Exception as e:
+        flash('Error al procesar la imagen. Intenta con otra imagen válida.', 'danger')
+        print('Error avatar:', e)
+    return redirect(url_for('perfil'))
+
+@app.route('/equipos/lista_ajax')
+@login_required
+def equipos_lista_ajax():
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM equipos ORDER BY nombre")
+    equipos = cursor.fetchall()
+    equipos_con_miembros = []
+    for equipo in equipos:
+        cursor.execute("""
+            SELECT * FROM empleados WHERE equipo_id = %s AND rol IN ('lider', 'practicante')
+        """, (equipo['id'],))
+        miembros = cursor.fetchall()
+        equipos_con_miembros.append({
+            'id': equipo['id'],
+            'nombre': equipo['nombre'],
+            'idBoard': equipo.get('idBoard'),
+            'miembros': miembros,
+            'total_miembros': len(miembros)
+        })
+    conexion.close()
+    # Renderizar solo el grid de equipos (sin el layout base)
+    from flask import render_template
+    return render_template('equipos_grid.html', equipos=equipos_con_miembros)
+
+@app.route('/usuarios/editar', methods=['POST'])
+def editar_usuario_api():
+    id = request.form.get('usuario_id')
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    correo = request.form.get('correo')
+    rol = request.form.get('rol')
+    # El equipo puede venir como nombre o id, aquí solo lo dejamos como ejemplo
+    # Si necesitas actualizar el equipo, deberías buscar el id correspondiente
+    # equipo = request.form.get('equipo')
+    if not id:
+        return 'ID de usuario requerido', 400
+    try:
+        conexion = get_connection()
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            UPDATE empleados SET nombre=%s, apellido=%s, correo=%s, rol=%s
+            WHERE id=%s
+        """, (nombre, apellido, correo, rol, id))
+        conexion.commit()
+        conexion.close()
+        return redirect(url_for('estadisticas'))
+    except Exception as e:
+        return f'Error al editar usuario: {str(e)}', 500
+
+@app.route('/usuarios/eliminar', methods=['POST'])
+def eliminar_usuario_api():
+    id = request.form.get('usuario_id')
+    if not id:
+        return 'ID de usuario requerido', 400
+    try:
+        conexion = get_connection()
+        cursor = conexion.cursor(dictionary=True)
+        # Obtener equipo y correo antes de eliminar
+        cursor.execute("SELECT equipo_id, correo FROM empleados WHERE id=%s", (id,))
+        row = cursor.fetchone()
+        equipo_id = row['equipo_id'] if row else None
+        correo = row['correo'] if row else None
+        # Eliminar de Trello si corresponde
+        if equipo_id and correo:
+            cursor.execute("SELECT idBoard FROM equipos WHERE id=%s", (equipo_id,))
+            row = cursor.fetchone()
+            idBoard = row['idBoard'] if row else None
+            if idBoard:
+                eliminar_de_tablero_trello(idBoard, correo)
+        # Dejar tareas pendientes sin asignar
+        cursor.execute("UPDATE tareas_trello SET empleado_id = NULL WHERE empleado_id = %s AND estado != 'completada'", (id,))
+        cursor.execute("DELETE FROM empleados_trello WHERE empleado_id = %s", (id,))
+        cursor.execute("DELETE FROM empleados WHERE id=%s", (id,))
+        conexion.commit()
+        conexion.close()
+        return redirect(url_for('estadisticas'))
+    except Exception as e:
+        return f'Error al eliminar usuario: {str(e)}', 500
+
+@app.route('/jefes/descender_rol_lider', methods=['POST'])
+@login_required
+def descender_rol_lider():
+    if current_user.rol != 'jefe':
+        flash('Acceso restringido solo para jefes.', 'danger')
+        return redirect(url_for('jefes'))
+    lider_id = request.form.get('lider_id')
+    if not lider_id:
+        flash('Debe seleccionar un líder.', 'danger')
+        return redirect(url_for('jefes'))
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT id, nombre, apellido, rol FROM empleados WHERE id = %s", (lider_id,))
+        usuario = cursor.fetchone()
+        if not usuario or usuario['rol'] != 'lider':
+            flash('El usuario seleccionado no es un líder válido.', 'danger')
+            conexion.close()
+            return redirect(url_for('jefes'))
+        cursor.execute("UPDATE empleados SET rol = 'practicante' WHERE id = %s", (lider_id,))
+        conexion.commit()
+        crear_y_emitir_notificacion(lider_id, 'Has sido descendido a Practicante.', 'rol')
+        flash('El líder ha sido descendido a practicante correctamente.', 'success')
+    except Exception as e:
+        conexion.rollback()
+        flash(f'Error al descender líder: {str(e)}', 'danger')
+    finally:
+        conexion.close()
+    return redirect(url_for('jefes'))
+
+@app.route('/jefes/cambiar_equipo_usuario', methods=['POST'])
+@login_required
+def cambiar_equipo_usuario():
+    if current_user.rol != 'jefe':
+        flash('Acceso restringido solo para jefes.', 'danger')
+        return redirect(url_for('jefes'))
+    usuario_id = request.form.get('usuario_id')
+    equipo_id = request.form.get('equipo_id')
+    if not usuario_id or not equipo_id:
+        flash('Debe seleccionar un usuario y un equipo.', 'danger')
+        return redirect(url_for('jefes'))
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT id, nombre, apellido, rol FROM empleados WHERE id = %s", (usuario_id,))
+        usuario = cursor.fetchone()
+        if not usuario:
+            flash('Usuario no encontrado.', 'danger')
+            conexion.close()
+            return redirect(url_for('jefes'))
+        if usuario['rol'] == 'lider':
+            cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE equipo_id = %s AND rol = 'lider'", (equipo_id,))
+            total_lideres = cursor.fetchone()['total']
+            if total_lideres >= 2:
+                flash('El equipo seleccionado ya tiene 2 líderes.', 'danger')
+                conexion.close()
+                return redirect(url_for('jefes'))
+        cursor.execute("UPDATE empleados SET equipo_id = %s WHERE id = %s", (equipo_id, usuario_id))
+        conexion.commit()
+        crear_y_emitir_notificacion(usuario_id, f'Tu equipo ha sido cambiado.', 'rol')
+        flash('El usuario ha sido cambiado de equipo correctamente.', 'success')
+    except Exception as e:
+        conexion.rollback()
+        flash(f'Error al cambiar de equipo: {str(e)}', 'danger')
+    finally:
+        conexion.close()
+    return redirect(url_for('jefes'))
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

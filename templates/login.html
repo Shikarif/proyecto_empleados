@@ -1,26 +1,111 @@
 {% extends 'base_login.html' %}
 
-{% block contenido %}
+{% block content %}
+<style>
+body {
+  background: url("{{ url_for('static', filename='img/fondo4.jpg') }}") no-repeat center center fixed;
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-glass-card {
+  background: rgba(24,28,42,0.97);
+  border-radius: 1.5em;
+  box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33;
+  border: 2px solid #00CFFF33;
+  padding: 2.5em 2.2em 2em 2.2em;
+  max-width: 410px;
+  width: 100%;
+  margin: 2em auto;
+  color: #fff;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+}
+@keyframes glassPop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.login-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #00CFFF;
+  letter-spacing: 1px;
+  margin-bottom: 1.2em;
+  text-align: center;
+  text-shadow: 0 2px 8px #23263a22;
+}
+.login-input {
+  border-radius: 0.8em;
+  border: 1.5px solid #00CFFF33;
+  background: rgba(24,28,42,0.85);
+  color: #fff;
+  font-size: 1.08em;
+  margin-bottom: 1.2em;
+  box-shadow: 0 1px 4px #00CFFF11;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.login-input:focus {
+  border-color: #00CFFF;
+  background: rgba(24,28,42,0.98);
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(0,207,255,0.13);
+}
+.login-btn {
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.7em 2.2em;
+  box-shadow: 0 2px 8px #00CFFF33;
+  background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+  color: #232946;
+  border: none;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+  margin-right: 0.7em;
+}
+.login-btn:hover {
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #7F9CF544;
+}
+.login-register-btn {
+  background: linear-gradient(90deg, #43e97b 0%, #00CFFF 100%);
+  color: #232946;
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.7em 2.2em;
+  box-shadow: 0 2px 8px #43e97b33;
+  border: none;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+.login-register-btn:hover {
+  background: linear-gradient(90deg, #00CFFF 0%, #43e97b 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #43e97b33;
+}
+</style>
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card login-glass-card">
                 <div class="card-header bg-primary text-white">
-                    <h4>Iniciar Sesión</h4>
+                    <h4 class="login-title">Iniciar Sesión</h4>
                 </div>
                 <div class="card-body">
                     <form method="POST">
                         <div class="mb-3">
                             <label for="correo" class="form-label">Correo Electrónico</label>
-                            <input type="email" class="form-control" id="correo" name="correo" required autofocus>
+                            <input type="email" class="form-control login-input" id="correo" name="correo" required autofocus>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control login-input" id="password" name="password" required>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
-                            <a href="{{ url_for('registrar') }}" class="btn btn-success">Registrarse</a>
+                            <button type="submit" class="btn login-btn">Iniciar Sesión</button>
+                            <a href="{{ url_for('registrar') }}" class="btn login-register-btn">Registrarse</a>
                         </div>
                     </form>
                 </div>

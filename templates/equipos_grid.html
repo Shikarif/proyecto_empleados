@@ -1,0 +1,28 @@
+{% for equipo in equipos %}
+<div>
+    <div class="equipo-card-modern animate__animated animate__fadeInUp animate__delay-{{ loop.index }}s">
+        <div class="banda-miembros">
+            <i class="fas fa-users me-1"></i> {{ equipo.total_miembros }} miembros
+        </div>
+        <div class="equipo-nombre">{{ equipo.nombre }}</div>
+        {% if current_user.rol == 'jefe' %}
+        <div class="d-flex justify-content-center gap-2 mb-2">
+            <a href="#" class="btn btn-outline-warning btn-sm btn-editar-equipo" data-equipo-id="{{ equipo.id }}"><i class="fas fa-edit"></i> Editar</a>
+            <button type="button" class="btn btn-outline-danger btn-sm btn-eliminar-equipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-trash"></i> Eliminar</button>
+        </div>
+        {% endif %}
+        <a href="#" class="btn btn-primary btn-sm w-100 mb-2 btn-gestionar-miembros" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
+            <i class="fas fa-users me-1"></i> Gestionar miembros
+        </a>
+        {% if equipo.idBoard %}
+            <a href="https://trello.com/b/{{ equipo.idBoard }}" class="btn btn-lg acceso-equipo-btn-modern w-100 shadow-sm animate__animated animate__fadeIn animate__delay-1s" target="_blank">
+                <i class="fas fa-sign-in-alt me-2"></i> Acceder
+            </a>
+        {% else %}
+            <a href="#" class="btn btn-lg btn-secondary w-100 shadow-sm acceso-equipo-btn-modern animate__animated animate__fadeIn animate__delay-1s" disabled>
+                <i class="fas fa-sign-in-alt me-2"></i> Sin tablero Trello
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %} 

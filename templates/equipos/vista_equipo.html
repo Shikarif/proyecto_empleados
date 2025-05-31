@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Vista de equipo vacía -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Tabs para cambiar entre tareas y chat
+const tabTareas = document.getElementById('tab-tareas');
+const tabChat = document.getElementById('tab-chat');
+const panelTareas = document.getElementById('panel-tareas');
+const panelChat = document.getElementById('panel-chat');
+
+tabTareas.onclick = function() {
+    tabTareas.classList.add('active');
+    tabChat.classList.remove('active');
+    panelTareas.classList.remove('d-none');
+    panelChat.classList.add('d-none');
+};
+tabChat.onclick = function() {
+    tabChat.classList.add('active');
+    tabTareas.classList.remove('active');
+    panelChat.classList.remove('d-none');
+    panelTareas.classList.add('d-none');
+};
+// Simulación de chat instantáneo (puedes conectar con SocketIO)
+document.getElementById('form-chat').onsubmit = function(e) {
+    e.preventDefault();
+    const input = document.getElementById('input-mensaje');
+    if(input.value.trim() !== '') {
+        const chat = document.getElementById('chat-mensajes');
+        chat.innerHTML += `<div class='mb-3'><div class='d-flex align-items-center mb-1'><div class='rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2' style='width:32px;height:32px;'>Tú</div><span class='fw-bold'>Tú</span><small class='text-muted ms-2'>Ahora</small></div><div class='ms-4'>${input.value}</div></div>`;
+        input.value = '';
+        chat.scrollTop = chat.scrollHeight;
+    }
+}
+</script>
+{% endblock %} 

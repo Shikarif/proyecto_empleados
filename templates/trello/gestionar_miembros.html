@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Gestionar miembros - {{ equipo.nombre }}{% endblock %}
+{% block content %}
+<div class="offcanvas-form-miembros">
+    <div class="offcanvas-titulo-miembros mb-4">
+        <div class="titulo-accion"><i class="fas fa-users-cog me-2"></i>Gestionar miembros</div>
+        <div class="titulo-equipo">de <span>{{ equipo.nombre }}</span></div>
+    </div>
+    <form method="POST" class="card shadow p-4 mx-auto" style="max-width: 500px; background:rgba(24,28,42,0.92);border-radius:1.5rem;border:1.5px solid #7F9CF5;color:#fff;">
+        <div class="mb-3">
+            <label class="form-label">Miembros actuales</label>
+            <ul class="list-group mb-2">
+                {% for miembro in miembros %}
+                <li class="list-group-item d-flex justify-content-between align-items-center" style="background:#232946;color:#fff;">
+                    {{ miembro.nombre }} {{ miembro.apellido }} <span class="badge bg-primary">{{ miembro.rol|capitalize }}</span>
+                    <form method="POST" action="{{ url_for('gestionar_miembros_equipo', equipo_id=equipo.id) }}" style="display:inline;">
+                        <input type="hidden" name="quitar_miembro_id" value="{{ miembro.id }}">
+                        <button type="submit" class="btn btn-danger btn-sm ms-2" title="Quitar del equipo"><i class="fas fa-user-minus"></i></button>
+                    </form>
+                </li>
+                {% else %}
+                <li class="list-group-item text-muted" style="background:#232946;color:#A3A9B8;">No hay miembros asignados.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Agregar miembros (líder/practicante sin equipo)</label>
+            <select class="form-select" name="miembros" multiple size="6" style="background:#232946;color:#fff;">
+                {% for usuario in disponibles %}
+                <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Ctrl+Click para seleccionar varios. Solo se muestran usuarios sin equipo.</small>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <a href="/equipos" class="btn btn-secondary">Volver</a>
+            <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i>Guardar cambios</button>
+        </div>
+    </form>
+</div>
+<style>
+.offcanvas-titulo-miembros {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    padding: 0.5rem 0 1.2rem 0;
+}
+.titulo-accion {
+    font-size: 2.1rem;
+    font-weight: 900;
+    color: #00CFFF;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+.titulo-accion i {
+    font-size: 2.2rem;
+    color: #7F9CF5;
+    margin-right: 0.5rem;
+}
+.titulo-equipo {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #7F9CF5;
+    margin-left: 2.7rem;
+    margin-top: -0.3rem;
+    letter-spacing: 0.5px;
+}
+.titulo-equipo span {
+    color: #fff;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    border-radius: 0.7rem;
+    padding: 0.1em 0.7em;
+    margin-left: 0.3em;
+    font-weight: 900;
+    font-size: 1.25em;
+    box-shadow: 0 2px 8px #23294622;
+}
+</style>
+{% endblock %} 

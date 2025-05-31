@@ -14,3 +14,8 @@ ALTER TABLE empleados
 ADD COLUMN telefono VARCHAR(20) AFTER correo,
 ADD COLUMN departamento VARCHAR(100) AFTER telefono,
 ADD COLUMN fecha_contratacion DATE AFTER departamento; 
+
+-------------------------------------------------
+#crear nuevos jedes desde la base de datos
+INSERT INTO empleados (nombre, apellido, correo, telefono, equipo_id, rol, password)
+VALUES ('Nombre', 'Apellido', 'correo@ejemplo.com', '123456789', NULL, 'jefe', '<contraseña_hash>');

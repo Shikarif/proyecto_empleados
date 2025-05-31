@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-3">Detalles de la Tarea</h2>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">{{ tarea.titulo }}</h4>
+            <p class="card-text">{{ tarea.descripcion }}</p>
+            <p><strong>Estado:</strong> <span class="badge bg-info">{{ tarea.estado|capitalize }}</span></p>
+            <p><strong>Fecha límite:</strong> {{ tarea.fecha_limite }}</p>
+            <p><strong>Prioridad:</strong> <span class="badge bg-warning text-dark">{{ tarea.prioridad|capitalize }}</span></p>
+        </div>
+    </div>
+    <div class="card mt-4">
+        <div class="card-header fw-semibold">
+            <i class="fas fa-paperclip me-2"></i> Archivos adjuntos
+        </div>
+        <div class="card-body">
+            <form id="formSubirAdjunto" data-upload-url="{{ url_for('tareas.subir_adjunto_tarea', tarea_id=tarea.id) }}" enctype="multipart/form-data">
+                <div class="input-group mb-3">
+                    <input type="file" class="form-control" name="archivo" required>
+                    <button class="btn btn-success" type="submit"><i class="fas fa-upload me-1"></i> Subir archivo</button>
+                </div>
+            </form>
+            <div id="exploradorArchivos" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mt-3">
+                {% for adjunto in adjuntos %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm animate__animated animate__fadeIn">
+                        <div class="d-flex align-items-center justify-content-center" style="height: 140px; font-size: 3rem;">
+                            {% if adjunto.tipo_archivo == 'image' %}
+                                <i class="fas fa-file-image text-info"></i>
+                            {% elif adjunto.tipo_archivo == 'pdf' %}
+                                <i class="fas fa-file-pdf text-danger"></i>
+                            {% elif adjunto.tipo_archivo == 'word' %}
+                                <i class="fas fa-file-word text-primary"></i>
+                            {% elif adjunto.tipo_archivo == 'excel' %}
+                                <i class="fas fa-file-excel text-success"></i>
+                            {% else %}
+                                <i class="fas fa-file-alt text-secondary"></i>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="small text-truncate" title="{{ adjunto.nombre_archivo }}">{{ adjunto.nombre_archivo }}</div>
+                        </div>
+                        <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center p-2">
+                            <a href="{{ url_for('tareas.descargar_adjunto', adjunto_id=adjunto.id) }}" class="btn btn-outline-primary btn-sm" title="Descargar"><i class="fas fa-download"></i></a>
+                            <button class="btn btn-outline-danger btn-sm btn-eliminar-adjunto" data-id="{{ adjunto.id }}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 text-muted">No hay archivos adjuntos.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Subida de archivo AJAX
+        var form = document.getElementById('formSubirAdjunto');
+        var uploadUrl = form.getAttribute('data-upload-url');
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            fetch(uploadUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    location.reload(); // Refresca para ver el nuevo archivo en el grid
+                } else {
+                    alert(data.message);
+                }
+            });
+        };
+        // Eliminar adjunto AJAX
+        document.querySelectorAll('.btn-eliminar-adjunto').forEach(btn => {
+            btn.onclick = function() {
+                fetch('/tareas/eliminar-adjunto/' + this.dataset.id, {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            };
+        });
+    });
+</script>
+<style>
+#exploradorArchivos .card {
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+#exploradorArchivos .card:hover {
+    box-shadow: 0 0 16px 2px #0d6efd33;
+    transform: translateY(-4px) scale(1.03);
+    z-index: 2;
+}
+.object-fit-cover {
+    object-fit: cover;
+}
+</style>
+{% endblock %} 

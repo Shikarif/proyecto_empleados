@@ -1,225 +1,703 @@
 {% extends "base.html" %}
-{% block contenido %}
-<div class="container mt-4">
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="fas fa-user-shield"></i> Jefes del Sistema</h4>
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('exportar_empleados_excel') }}" class="btn btn-success">
-                    <i class="fas fa-file-excel"></i> Exportar Excel
-                </a>
-                <a href="{{ url_for('exportar_empleados_pdf') }}" class="btn btn-danger">
-                    <i class="fas fa-file-pdf"></i> Exportar PDF
-                </a>
-                <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearEquipoModal">
-                    <i class="fas fa-plus"></i> Crear Equipo
-                </a>
-            </div>
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Panel principal -->
+    <div class="col-lg-9 col-12">
+      <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="text-cian fw-bold mb-0" style="font-size:2.1rem;letter-spacing:0.5px;"><i class="fas fa-user-shield me-2"></i>Jefes del Sistema</h2>
+          <div class="d-flex gap-2">
+            <a href="{{ url_for('exportar_empleados_excel') }}" class="btn btn-success"><i class="fas fa-file-excel me-1"></i>Excel</a>
+            <a href="{{ url_for('exportar_empleados_pdf') }}" class="btn btn-danger"><i class="fas fa-file-pdf me-1"></i>PDF</a>
+            <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearJefe"><i class="fas fa-user-plus me-1"></i>Nuevo Jefe</a>
+            <button class="btn btn-warning" id="btnDescenderRol"><i class="fas fa-arrow-down me-1"></i>Descender Rol</button>
+            <button class="btn btn-info" id="btnCambiarEquipo"><i class="fas fa-exchange-alt me-1"></i>Cambiar Equipo</button>
+          </div>
         </div>
-        <div class="card-body">
-            {% if jefes %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Apellido</th>
-                            <th>Correo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for jefe in jefes %}
-                        <tr>
-                            <td>{{ jefe[1] }}</td>
-                            <td>{{ jefe[2] }}</td>
-                            <td>{{ jefe[3] }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="alert alert-info">No hay jefes registrados.</div>
-            {% endif %}
+        <div class="card glass-panel p-0 mb-4">
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle mb-0" style="background:transparent;">
+              <thead class="bg-cian text-white">
+                <tr>
+                  <th>Nombre</th>
+                  <th>Apellido</th>
+                  <th>Correo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for jefe in jefes %}
+                <tr style="border-bottom:1px solid #232946;">
+                  <td>{{ jefe[1] }}</td>
+                  <td>{{ jefe[2] }}</td>
+                  <td>{{ jefe[3] }}</td>
+                </tr>
+                {% endfor %}
+                {% if not jefes %}
+                <tr><td colspan="3" class="text-center text-muted">No hay jefes registrados.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
+      <!-- Panel equipos sin líder -->
+      <div class="mb-4">
+        <div class="d-flex align-items-center mb-2">
+          <h4 class="text-warning mb-0" style="font-size:1.3rem;"><i class="fas fa-exclamation-triangle me-2"></i>Equipos sin Líder</h4>
+        </div>
+        <div class="card glass-panel p-0">
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle mb-0" style="background:transparent;">
+              <thead class="bg-warning text-dark">
+                <tr>
+                  <th>Equipo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for equipo in equipos if not equipo.tiene_lider %}
+                <tr style="border-bottom:1px solid #232946;">
+                  <td>{{ equipo.nombre }}</td>
+                  <td class="d-flex gap-2">
+                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarLider" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-user-plus"></i> Asignar Líder</button>
+                    <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarEquipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-edit"></i> Editar</button>
+                    <form method="POST" action="{{ url_for('eliminar_equipo', id=equipo.id) }}" class="d-inline-block" onsubmit="return confirm('¿Seguro que deseas eliminar este equipo?');">
+                      <button class="btn btn-danger btn-sm" type="submit" {% if equipo.total_miembros > 0 %}disabled title="No se puede eliminar un equipo con miembros"{% endif %}><i class="fas fa-trash-alt"></i> Eliminar</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- Panel empleados líderes y practicantes -->
+      <div class="mb-4">
+        <div class="d-flex align-items-center mb-2">
+          <h4 class="text-info mb-0" style="font-size:1.3rem;"><i class="fas fa-users me-2"></i>Empleados (Líderes y Practicantes)</h4>
+        </div>
+        <div class="card glass-panel p-0">
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle mb-0" style="background:transparent;">
+              <thead class="bg-info text-white">
+                <tr>
+                  <th>Nombre</th>
+                  <th>Apellido</th>
+                  <th>Correo</th>
+                  <th>Rol</th>
+                  <th>Equipo</th>
+                  <th>Invitación Trello</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emp in empleados_equipo %}
+                <tr style="border-bottom:1px solid #232946;">
+                  <td>{{ emp.nombre }}</td>
+                  <td>{{ emp.apellido }}</td>
+                  <td>{{ emp.correo }}</td>
+                  <td><span class="badge bg-secondary">{{ emp.rol|capitalize }}</span></td>
+                  <td><span class="badge bg-cian">{{ emp.equipo or 'Sin equipo' }}</span></td>
+                  <td>
+                    {% if emp.invitado_trello %}
+                      <span class="badge bg-success">Invitado</span>
+                    {% else %}
+                      <span class="badge bg-secondary">No invitado</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form method="POST" action="{{ url_for('resetear_invitacion_trello', empleado_id=emp.id) }}" style="display:inline;">
+                      <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('¿Seguro que deseas resetear la invitación a Trello para este usuario?');"><i class="fas fa-redo"></i> Resetear</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <!-- Equipos sin líder -->
-    <div class="card mb-4">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-exclamation-triangle me-2"></i>Equipos sin Líder</span>
+    <!-- Panel lateral KPIs -->
+    <div class="col-lg-3 col-12 mb-4">
+      <div class="d-flex flex-column gap-3">
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-users"></i></div>
+          <div class="kpi-title-glass">Usuarios Logueados</div>
+          <div class="kpi-value-glass">{{ total_activos or 0 }}</div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Equipo</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for equipo in equipos if not equipo.tiene_lider %}
-                        <tr>
-                            <td>{{ equipo.nombre }}</td>
-                            <td class="d-flex gap-2">
-                                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarLider" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
-                                    <i class="fas fa-user-plus"></i> Asignar Líder
-                                </button>
-                                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarEquipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
-                                    <i class="fas fa-edit"></i> Editar
-                                </button>
-                                <form method="POST" action="{{ url_for('eliminar_equipo', id=equipo.id) }}" class="d-inline-block" onsubmit="return confirm('¿Seguro que deseas eliminar este equipo?');">
-                                    <button class="btn btn-danger btn-sm" type="submit" {% if equipo.total_miembros > 0 %}disabled title="No se puede eliminar un equipo con miembros"{% endif %}>
-                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-user-tie"></i></div>
+          <div class="kpi-title-glass">Jefes Logueados</div>
+          <div class="kpi-value-glass">{{ roles_activos.get('jefe',0) }}</div>
         </div>
-    </div>
-</div>
-
-<!-- Modal Crear Equipo -->
-<div class="modal fade" id="modalCrearEquipo" tabindex="-1" aria-labelledby="modalCrearEquipoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form id="formCrearEquipo" method="POST" action="{{ url_for('crear_equipo_jefe') }}">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="modalCrearEquipoLabel"><i class="fas fa-users-cog me-2"></i>Crear Nuevo Equipo</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-user-cog"></i></div>
+          <div class="kpi-title-glass">Líderes Logueados</div>
+          <div class="kpi-value-glass">{{ roles_activos.get('lider',0) }}</div>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="nombreEquipo" class="form-label">Nombre del Equipo</label>
-            <input type="text" class="form-control form-control-lg" id="nombreEquipo" name="nombre" required maxlength="100" placeholder="Ej: Equipo Innovación">
-          </div>
-          <div class="mb-3">
-            <label for="miembrosEquipo" class="form-label">Seleccionar miembros (líderes/practicantes)</label>
-            <select class="form-select" id="miembrosEquipo" name="miembros[]" multiple style="min-height: 120px;">
-              {% for usuario in usuarios_disponibles %}
-                <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
-              {% endfor %}
-            </select>
-            <small class="text-muted">Ctrl+Click para seleccionar varios. Solo se muestran líderes y practicantes sin equipo.</small>
-          </div>
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-user-graduate"></i></div>
+          <div class="kpi-title-glass">Practicantes Logueados</div>
+          <div class="kpi-value-glass">{{ roles_activos.get('practicante',0) }}</div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success"><i class="fas fa-save me-2"></i>Crear Equipo</button>
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-users-cog"></i></div>
+          <div class="kpi-title-glass">Total Empleados</div>
+          <div class="kpi-value-glass">{{ total_empleados or 0 }}</div>
         </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Asignar Líder -->
-<div class="modal fade" id="modalAsignarLider" tabindex="-1" aria-labelledby="modalAsignarLiderLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formAsignarLider" method="POST" action="{{ url_for('asignar_lider') }}">
-        <div class="modal-header bg-warning text-dark">
-          <h5 class="modal-title" id="modalAsignarLiderLabel"><i class="fas fa-user-plus me-2"></i>Asignar Líder a <span id="equipoNombreModal"></span></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <div class="kpi-card-glass text-center p-4">
+          <div class="kpi-icon-glass mb-2"><i class="fas fa-layer-group"></i></div>
+          <div class="kpi-title-glass">Total Equipos</div>
+          <div class="kpi-value-glass">{{ total_equipos }}</div>
         </div>
-        <div class="modal-body">
-          <input type="hidden" name="equipo_id" id="equipoIdModal">
-          <div class="mb-3">
-            <label for="lider_id" class="form-label">Seleccionar líder disponible</label>
-            <select class="form-select" id="lider_id" name="lider_id" required>
-              <option value="">Seleccione un líder</option>
-              {% for lider in lideres_disponibles %}
-                <option value="{{ lider.id }}">{{ lider.nombre }} {{ lider.apellido }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-warning"><i class="fas fa-save me-2"></i>Asignar Líder</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Editar Equipo -->
-<div class="modal fade" id="modalEditarEquipo" tabindex="-1" aria-labelledby="modalEditarEquipoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form id="formEditarEquipo" method="POST" action="{{ url_for('editar_equipo') }}">
-        <div class="modal-header bg-info text-white">
-          <h5 class="modal-title" id="modalEditarEquipoLabel"><i class="fas fa-edit me-2"></i>Editar Equipo</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" name="equipo_id" id="editarEquipoId">
-          <div class="mb-3">
-            <label for="editarNombreEquipo" class="form-label">Nombre del Equipo</label>
-            <input type="text" class="form-control form-control-lg" id="editarNombreEquipo" name="nombre" required maxlength="100">
-          </div>
-          <div class="mb-3">
-            <label for="editarLiderEquipo" class="form-label">Asignar líder</label>
-            <select class="form-select" id="editarLiderEquipo" name="lider_id">
-              <option value="">Sin líder</option>
-              {% for lider in lideres_disponibles %}
-                <option value="{{ lider.id }}">{{ lider.nombre }} {{ lider.apellido }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="editarMiembrosEquipo" class="form-label">Miembros (líderes/practicantes)</label>
-            <select class="form-select" id="editarMiembrosEquipo" name="miembros[]" multiple style="min-height: 120px;">
-              {% for usuario in usuarios_disponibles %}
-                <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
-              {% endfor %}
-            </select>
-            <small class="text-muted">Ctrl+Click para seleccionar varios.</small>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-info"><i class="fas fa-save me-2"></i>Guardar Cambios</button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
-
+<!-- Panel flotante Crear Jefe -->
+<div id="panelCrearJefe" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title"><i class="fas fa-user-plus me-2"></i>Crear Jefe</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelCrearJefe()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelCrearJefe" method="POST" action="{{ url_for('crear_jefe') }}" autocomplete="off">
+      <div class="mb-2">
+        <label>Nombre</label>
+        <input type="text" class="form-control" name="nombre" required maxlength="50">
+      </div>
+      <div class="mb-2">
+        <label>Apellido</label>
+        <input type="text" class="form-control" name="apellido" required maxlength="50">
+      </div>
+      <div class="mb-2">
+        <label>Correo electrónico</label>
+        <input type="email" class="form-control" name="correo" required maxlength="100">
+      </div>
+      <div class="mb-2">
+        <label>Contraseña</label>
+        <input type="password" class="form-control" name="password" required minlength="6">
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelCrearJefe()">Cancelar</button>
+        <button type="submit" class="btn btn-info px-3"><i class="fas fa-save me-1"></i>Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Crear Equipo -->
+<div id="panelCrearEquipo" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#43e97b;"><i class="fas fa-users-cog me-2"></i>Crear Equipo</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelCrearEquipo()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelCrearEquipo" method="POST" action="{{ url_for('crear_equipo_jefe') }}" autocomplete="off">
+      <div class="mb-2">
+        <label>Nombre del Equipo</label>
+        <input type="text" class="form-control" name="nombre" required maxlength="100" placeholder="Ej: Equipo Innovación">
+      </div>
+      <div class="mb-2">
+        <label>Miembros (líderes/practicantes)</label>
+        <select class="form-select" name="miembros[]" multiple style="min-height: 100px;">
+          {% for usuario in usuarios_disponibles %}
+            <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+          {% endfor %}
+        </select>
+        <small class="text-muted">Ctrl+Click para seleccionar varios.</small>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelCrearEquipo()">Cancelar</button>
+        <button type="submit" class="btn btn-success px-3"><i class="fas fa-save me-1"></i>Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Asignar Líder -->
+<div id="panelAsignarLider" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#FFD43B;"><i class="fas fa-user-plus me-2"></i>Asignar Líder</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelAsignarLider()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelAsignarLider" method="POST" action="{{ url_for('asignar_lider') }}" autocomplete="off">
+      <input type="hidden" name="equipo_id" id="inputEquipoIdAsignarLider">
+      <div class="mb-2">
+        <label>Seleccionar practicante disponible</label>
+        <select class="form-select" name="lider_id" id="inputLiderIdAsignarLider" required>
+          <option value="">Seleccione un practicante</option>
+          {% for usuario in empleados_equipo if usuario.rol == 'practicante' %}
+            <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} (Practicante)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelAsignarLider()">Cancelar</button>
+        <button type="submit" class="btn btn-warning px-3"><i class="fas fa-save me-1"></i>Asignar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Editar Equipo -->
+<div id="panelEditarEquipo" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#7F9CF5;"><i class="fas fa-edit me-2"></i>Editar Equipo</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelEditarEquipo()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelEditarEquipo" method="POST" action="{{ url_for('editar_equipo') }}" autocomplete="off">
+      <input type="hidden" name="equipo_id" id="inputEquipoIdEditar">
+      <div class="mb-2">
+        <label>Nombre del Equipo</label>
+        <input type="text" class="form-control" name="nombre" id="inputNombreEquipoEditar" required maxlength="100">
+      </div>
+      <div class="mb-2">
+        <label>Asignar líder</label>
+        <select class="form-select" name="lider_id" id="inputLiderIdEditar">
+          <option value="">Sin líder</option>
+          {% for lider in lideres_disponibles %}
+            <option value="{{ lider.id }}">{{ lider.nombre }} {{ lider.apellido }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label>Miembros (líderes/practicantes)</label>
+        <select class="form-select" name="miembros[]" id="inputMiembrosEditar" multiple style="min-height: 100px;">
+          {% for usuario in usuarios_disponibles %}
+            <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+          {% endfor %}
+        </select>
+        <small class="text-muted">Ctrl+Click para seleccionar varios.</small>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelEditarEquipo()">Cancelar</button>
+        <button type="submit" class="btn btn-primary px-3"><i class="fas fa-save me-1"></i>Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Descender Rol -->
+<div id="panelDescenderRol" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#FFD43B;"><i class="fas fa-arrow-down me-2"></i>Descender Rol de Líder</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelDescenderRol()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelDescenderRol" method="POST" action="{{ url_for('descender_rol_lider') }}" autocomplete="off">
+      <div class="mb-2">
+        <label>Seleccionar líder</label>
+        <select class="form-select" name="lider_id" required>
+          <option value="">Seleccione un líder</option>
+          {% for emp in empleados_equipo if emp.rol == 'lider' %}
+            <option value="{{ emp.id }}">{{ emp.nombre }} {{ emp.apellido }} ({{ emp.equipo or 'Sin equipo' }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelDescenderRol()">Cancelar</button>
+        <button type="submit" class="btn btn-warning px-3"><i class="fas fa-arrow-down me-1"></i>Descender</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Cambiar Equipo -->
+<div id="panelCambiarEquipo" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#00CFFF;"><i class="fas fa-exchange-alt me-2"></i>Cambiar Equipo</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelCambiarEquipo()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelCambiarEquipo" method="POST" action="{{ url_for('cambiar_equipo_usuario') }}" autocomplete="off">
+      <div class="mb-2">
+        <label>Seleccionar usuario</label>
+        <select class="form-select" name="usuario_id" id="selectUsuarioCambiarEquipo" required>
+          <option value="">Seleccione un usuario</option>
+          {% for emp in empleados_equipo %}
+            <option value="{{ emp.id }}" data-rol="{{ emp.rol }}">{{ emp.nombre }} {{ emp.apellido }} ({{ emp.rol|capitalize }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label>Seleccionar nuevo equipo</label>
+        <select class="form-select" name="equipo_id" id="selectEquipoNuevo" required>
+          <option value="">Seleccione un equipo</option>
+          {% for equipo in equipos %}
+            <option value="{{ equipo.id }}">{{ equipo.nombre }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text text-warning" id="msgCupoLider" style="display:none;">Este equipo ya tiene 2 líderes. No se puede asignar otro líder.</div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelCambiarEquipo()">Cancelar</button>
+        <button type="submit" class="btn btn-info px-3"><i class="fas fa-exchange-alt me-1"></i>Cambiar</button>
+      </div>
+    </form>
+  </div>
+</div>
 <script>
-// Pasar datos al modal de asignar líder
-const modalAsignarLider = document.getElementById('modalAsignarLider');
-if (modalAsignarLider) {
-  modalAsignarLider.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const equipoId = button.getAttribute('data-equipo-id');
-    const equipoNombre = button.getAttribute('data-equipo-nombre');
-    document.getElementById('equipoIdModal').value = equipoId;
-    document.getElementById('equipoNombreModal').textContent = equipoNombre;
-  });
+// Panel flotante Crear Jefe
+function abrirPanelCrearJefe() {
+  document.getElementById('panelCrearJefe').style.display = 'block';
 }
-
-// Pasar datos al modal de editar equipo
-const modalEditarEquipo = document.getElementById('modalEditarEquipo');
-if (modalEditarEquipo) {
-  modalEditarEquipo.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const equipoId = button.getAttribute('data-equipo-id');
-    const equipoNombre = button.getAttribute('data-equipo-nombre');
-    document.getElementById('editarEquipoId').value = equipoId;
-    document.getElementById('editarNombreEquipo').value = equipoNombre;
-    // Opcional: podrías cargar miembros actuales vía AJAX y seleccionarlos
-  });
+function cerrarPanelCrearJefe() {
+  document.getElementById('panelCrearJefe').style.display = 'none';
+  document.getElementById('formPanelCrearJefe').reset();
+}
+document.querySelectorAll('[data-bs-target="#modalCrearJefe"]').forEach(btn => {
+  btn.onclick = function(e) { e.preventDefault(); abrirPanelCrearJefe(); };
+});
+// Panel flotante Crear Equipo
+function abrirPanelCrearEquipo() {
+  document.getElementById('panelCrearEquipo').style.display = 'block';
+}
+function cerrarPanelCrearEquipo() {
+  document.getElementById('panelCrearEquipo').style.display = 'none';
+  document.getElementById('formPanelCrearEquipo').reset();
+}
+document.querySelectorAll('[data-bs-target="#modalCrearEquipo"]').forEach(btn => {
+  btn.onclick = function(e) { e.preventDefault(); abrirPanelCrearEquipo(); };
+});
+// Panel flotante Asignar Líder
+function abrirPanelAsignarLider(equipoId, equipoNombre) {
+  document.getElementById('panelAsignarLider').style.display = 'block';
+  document.getElementById('inputEquipoIdAsignarLider').value = equipoId;
+  document.getElementById('inputLiderIdAsignarLider').selectedIndex = 0;
+  document.getElementById('panelAsignarLider').querySelector('.fw-bold').innerHTML = `<i class='fas fa-user-plus me-2'></i>Asignar Líder a <span class='text-info'>${equipoNombre}</span>`;
+}
+function cerrarPanelAsignarLider() {
+  document.getElementById('panelAsignarLider').style.display = 'none';
+  document.getElementById('formPanelAsignarLider').reset();
+}
+document.querySelectorAll('[data-bs-target="#modalAsignarLider"]').forEach(btn => {
+  btn.onclick = function(e) {
+    e.preventDefault();
+    abrirPanelAsignarLider(btn.getAttribute('data-equipo-id'), btn.getAttribute('data-equipo-nombre'));
+  };
+});
+// Panel flotante Editar Equipo
+function abrirPanelEditarEquipo(equipoId, equipoNombre) {
+  document.getElementById('panelEditarEquipo').style.display = 'block';
+  document.getElementById('inputEquipoIdEditar').value = equipoId;
+  // Aquí podrías cargar los datos actuales del equipo vía AJAX si lo deseas
+}
+function cerrarPanelEditarEquipo() {
+  document.getElementById('panelEditarEquipo').style.display = 'none';
+  document.getElementById('formPanelEditarEquipo').reset();
+}
+document.querySelectorAll('[data-bs-target="#modalEditarEquipo"]').forEach(btn => {
+  btn.onclick = function(e) {
+    e.preventDefault();
+    abrirPanelEditarEquipo(btn.getAttribute('data-equipo-id'), btn.getAttribute('data-equipo-nombre'));
+  };
+});
+// Panel flotante Descender Rol
+function abrirPanelDescenderRol() {
+  document.getElementById('panelDescenderRol').style.display = 'block';
+}
+function cerrarPanelDescenderRol() {
+  document.getElementById('panelDescenderRol').style.display = 'none';
+  document.getElementById('formPanelDescenderRol').reset();
+}
+document.getElementById('btnDescenderRol').onclick = function(e) { e.preventDefault(); abrirPanelDescenderRol(); };
+// Panel flotante Cambiar Equipo
+function abrirPanelCambiarEquipo() {
+  document.getElementById('panelCambiarEquipo').style.display = 'block';
+}
+function cerrarPanelCambiarEquipo() {
+  document.getElementById('panelCambiarEquipo').style.display = 'none';
+  document.getElementById('formPanelCambiarEquipo').reset();
+  document.getElementById('msgCupoLider').style.display = 'none';
+}
+document.getElementById('btnCambiarEquipo').onclick = function(e) { e.preventDefault(); abrirPanelCambiarEquipo(); };
+// Validación de cupo de líderes
+const selectUsuario = document.getElementById('selectUsuarioCambiarEquipo');
+const selectEquipo = document.getElementById('selectEquipoNuevo');
+const msgCupoLider = document.getElementById('msgCupoLider');
+if(selectUsuario && selectEquipo) {
+  selectUsuario.onchange = function() {
+    msgCupoLider.style.display = 'none';
+    selectEquipo.selectedIndex = 0;
+  };
+  selectEquipo.onchange = function() {
+    const usuarioRol = selectUsuario.options[selectUsuario.selectedIndex].getAttribute('data-rol');
+    const equipoId = selectEquipo.value;
+    if(usuarioRol === 'lider' && equipoId) {
+      // Buscar el equipo y validar cupo
+      const equipo = {{ equipos|tojson }}.find(eq => eq.id == equipoId);
+      if(equipo && equipo.tiene_lider >= 2) {
+        msgCupoLider.style.display = '';
+      } else {
+        msgCupoLider.style.display = 'none';
+      }
+    } else {
+      msgCupoLider.style.display = 'none';
+    }
+  };
 }
 </script>
-
-{% block scripts %}
-<script>
-// Mejorar select múltiple con búsqueda si se desea (puedes integrar select2.js para mejor UX)
-</script>
-{% endblock %}
+<style>
+.kpi-card-glass {
+  background: rgba(24,28,42,0.97);
+  border-radius: 1.2rem;
+  box-shadow: 0 4px 24px #23294633, 0 1px 4px #00CFFF22;
+  border: 2.5px solid #00CFFF;
+  min-height: 180px;
+  min-width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.kpi-icon-glass {
+  font-size: 2.5rem;
+  color: #00CFFF;
+  margin-bottom: 0.5rem;
+}
+.kpi-title-glass {
+  font-size: 1.13rem;
+  font-weight: 800;
+  color: #00CFFF;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.5px;
+}
+.kpi-value-glass {
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 0.1rem;
+}
+/* Mejorar encabezados de tablas */
+.table thead th, .table thead td {
+  background: #00CFFF !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+  font-size: 1.13rem !important;
+  letter-spacing: 0.5px;
+  border-bottom: 2.5px solid #232946 !important;
+  text-shadow: none !important;
+}
+.table th, .table td {
+  color: #fff !important;
+}
+@media (max-width: 991px) {
+  .kpi-card-glass { min-width: 220px; max-width: 100%; }
+}
+.kpi-glass-card {
+  background: rgba(24,28,42,0.93);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33;
+  border: 2px solid #00CFFF;
+  backdrop-filter: blur(10px) saturate(1.2);
+  color: #fff;
+  min-height: 120px;
+  margin-bottom: 0.5rem;
+  transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+}
+.kpi-glass-card:hover {
+  box-shadow: 0 20px 48px #00CFFF55, 0 4px 16px #7F9CF544;
+  border: 2px solid #7F9CF5;
+  transform: translateY(-4px) scale(1.03);
+}
+.kpi-icon-modern {
+  font-size: 2.2rem;
+  color: #00CFFF;
+  filter: drop-shadow(0 2px 8px #00CFFF55);
+}
+.kpi-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #7F9CF5;
+  letter-spacing: 0.7px;
+}
+.glass-panel {
+  background: rgba(24,28,42,0.97);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33;
+  border: 2px solid #00CFFF;
+  backdrop-filter: blur(12px) saturate(1.2);
+  margin-bottom: 2rem;
+}
+.glass-panel-header {
+  background: linear-gradient(90deg, #181C2A 0%, #232946 100%);
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  padding: 1.1rem 2rem 1rem 2rem;
+  border-bottom: 1.5px solid #00CFFF44;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #00CFFF;
+  letter-spacing: 1.1px;
+  text-shadow: 0 2px 8px #23294655;
+}
+.glass-panel-body {
+  padding: 1.5rem 2rem 1.2rem 2rem;
+}
+.btn-glass-primary {
+  background: #7F9CF5;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #7F9CF522;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-glass-primary:hover {
+  background: #232946;
+  color: #7F9CF5;
+  box-shadow: 0 4px 16px #7F9CF544;
+}
+.btn-glass-success {
+  background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+  color: #232946;
+  font-weight: 800;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #38f9d733;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-glass-success:hover {
+  background: linear-gradient(90deg, #38f9d7 0%, #43e97b 100%);
+  color: #181C2A;
+  box-shadow: 0 4px 16px #38f9d744;
+}
+.btn-glass-danger {
+  background: linear-gradient(90deg, #fa5252 0%, #ff922b 100%);
+  color: #fff;
+  font-weight: 800;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #fa525233;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-glass-danger:hover {
+  background: linear-gradient(90deg, #ff922b 0%, #fa5252 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #fa525244;
+}
+.btn-glass-warning {
+  background: #FFD43B;
+  color: #232946;
+  font-weight: 700;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #FFD43B22;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-glass-warning:hover {
+  background: #232946;
+  color: #FFD43B;
+  box-shadow: 0 4px 16px #FFD43B44;
+}
+.btn-glass-info {
+  background: #00CFFF;
+  color: #232946;
+  font-weight: 700;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #00CFFF22;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-glass-info:hover {
+  background: #232946;
+  color: #00CFFF;
+  box-shadow: 0 4px 16px #00CFFF44;
+}
+.glass-table {
+  background: #181C2A;
+  color: #fff;
+  border-radius: 1.1rem;
+  overflow: hidden;
+  font-size: 1.08rem;
+  margin-bottom: 0;
+}
+.glass-table th, .glass-table td {
+  color: #fff !important;
+  font-weight: 700;
+  background: #181C2A !important;
+  text-shadow: none !important;
+  border-bottom: 1px solid #232946 !important;
+  vertical-align: middle;
+}
+.glass-table thead th {
+  color: #fff !important;
+  font-weight: 900;
+  background: #232946 !important;
+  letter-spacing: 1px;
+  font-size: 1.12rem;
+  border-bottom: 2px solid #00CFFF !important;
+}
+.glass-table tbody tr:nth-child(even) td {
+  background: #20243a !important;
+}
+.glass-table tbody tr:hover td {
+  background: #232946 !important;
+  color: #00CFFF !important;
+}
+.glass-alert {
+  background: rgba(127,156,245,0.10) !important;
+  color: #A3A9B8 !important;
+  border: none !important;
+  border-radius: 1.1rem !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+}
+.panel-glass-float {
+  background: rgba(24,28,42,0.98);
+  border-radius: 1.2rem;
+  box-shadow: 0 6px 32px #23294633, 0 2px 8px #00CFFF22;
+  min-width: 320px;
+  max-width: 400px;
+  color: #fff;
+  font-size: 1.08rem;
+}
+.panel-glass-float .panel-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #00CFFF;
+  letter-spacing: 1px;
+  margin-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.panel-glass-float label {
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  font-size: 1.08rem;
+}
+.panel-glass-float input,
+.panel-glass-float select {
+  background: #232946;
+  color: #fff;
+  border: 1.5px solid #7F9CF5;
+  border-radius: 0.7rem;
+  font-size: 1.08rem;
+  margin-bottom: 0.7rem;
+}
+.panel-glass-float input:focus,
+.panel-glass-float select:focus {
+  border-color: #00CFFF;
+  box-shadow: 0 0 0 2px #00CFFF33;
+  background: #181C2A;
+  color: #fff;
+}
+.panel-glass-float .btn-close {
+  filter: invert(1);
+}
+.panel-glass-float .btn {
+  font-weight: 700;
+  font-size: 1.08rem;
+  border-radius: 0.7rem;
+}
+</style>
 {% endblock %} 

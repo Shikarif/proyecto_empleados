@@ -1,22 +1,22 @@
 :root {
-    --bg-color: #f8f9fa;
-    --text-color: #232946;
-    --card-bg: #fff;
-    --card-border: #dee2e6;
-    --navbar-bg: #2c3e50;
+    --bg-color: #181C2A;
+    --text-color: #fff;
+    --card-bg: #232946;
+    --card-border: #2e3657;
+    --navbar-bg: #232946;
     --navbar-text: #fff;
-    --table-bg: #fff;
-    --table-border: #dee2e6;
-    --input-bg: #fff;
-    --input-border: #ced4da;
-    --accent: #3e7bfa;
-    --secondary-text: #6c757d;
-    --footer-bg: #2c3e50;
-    --dropdown-bg: #fff;
-    --dropdown-text: #232946;
-    --alert-bg: #e9ecef;
-    --alert-text: #232946;
-    --badge-bg: #3e7bfa;
+    --table-bg: #232946;
+    --table-border: #2e3657;
+    --input-bg: #232946;
+    --input-border: #2e3657;
+    --accent: #00CFFF;
+    --secondary-text: #A3A9B8;
+    --footer-bg: #232946;
+    --dropdown-bg: #232946;
+    --dropdown-text: #fff;
+    --alert-bg: #232946;
+    --alert-text: #fff;
+    --badge-bg: #7F9CF5;
     --badge-text: #fff;
 }
 

@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block title %}Panel Trello{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold text-center" style="font-size:2.5rem; color:#00CFFF; text-shadow:0 2px 8px #23294655, 0 1px 0 #fff; letter-spacing:1.5px;">
+        <i class="fab fa-trello me-2"></i>Panel de Gestión Trello
+    </h2>
+    <div class="row g-4 justify-content-center">
+        {% for equipo in equipos %}
+        <div class="col-12 col-md-10 col-lg-6">
+            <div class="trello-glass-card mb-4">
+                <div class="trello-card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="trello-card-icon"><i class="fas fa-users"></i></span>
+                        <span class="trello-card-title">{{ equipo.nombre }}</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {% if current_user.rol == 'jefe' or current_user.equipo_id == equipo.id %}
+                            {% if equipo.idBoard %}
+                                <a href="https://trello.com/b/{{ equipo.idBoard }}" target="_blank" class="btn btn-trello-glass">
+                                    <i class="fab fa-trello me-1"></i>Tablero
+                                </a>
+                                <button type="button" class="btn btn-trello-glass btn-sync-trello" data-equipo-id="{{ equipo.id }}">
+                                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                </button>
+                            {% else %}
+                                <a href="#" class="btn btn-secondary btn-trello-glass" disabled>
+                                    <i class="fas fa-ban me-1"></i>Sin tablero Trello
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="#" class="btn btn-secondary btn-trello-glass" disabled>
+                                <i class="fas fa-ban me-1"></i>No permitido
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="trello-card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="trello-card-section"><i class="fas fa-tasks me-1"></i>Tareas</span>
+                    </div>
+                    {% if equipo.tareas|length == 0 %}
+                        <div class="alert alert-secondary text-center mb-0 trello-alert-glass">No hay tareas para este equipo.</div>
+                    {% else %}
+                        <div class="trello-tareas-list">
+                        {% for tarea in equipo.tareas %}
+                            <div class="trello-tarea-item d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                                <div class="d-flex flex-column">
+                                    <span class="trello-tarea-titulo">{{ tarea.titulo }}</span>
+                                    <span class="trello-tarea-asignado">Asignado a: <span>{{ tarea.asignado_nombre or 'Sin asignar' }} {{ tarea.asignado_apellido or '' }}</span></span>
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    {% if tarea.estado == 'completada' %}
+                                        <span class="badge trello-badge-completada">Completada</span>
+                                    {% elif tarea.estado == 'en_progreso' %}
+                                        <span class="badge trello-badge-progreso">En progreso</span>
+                                    {% else %}
+                                        <span class="badge trello-badge-pendiente">Pendiente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<style>
+.trello-glass-card {
+  background: rgba(24,28,42,0.93);
+  border-radius: 2.2rem;
+  box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33;
+  border: 2.5px solid #00CFFF;
+  backdrop-filter: blur(12px) saturate(1.2);
+  padding: 0;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.trello-glass-card:hover {
+  box-shadow: 0 20px 48px #00CFFF55, 0 4px 16px #7F9CF544;
+  border: 2.5px solid #7F9CF5;
+  transform: translateY(-6px) scale(1.03);
+}
+.trello-card-header {
+  background: linear-gradient(90deg, #181C2A 0%, #232946 100%);
+  border-top-left-radius: 2.2rem;
+  border-top-right-radius: 2.2rem;
+  padding: 1.2rem 2rem 1.1rem 2rem;
+  border-bottom: 1.5px solid #00CFFF44;
+}
+.trello-card-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #00CFFF;
+  letter-spacing: 1.2px;
+  text-shadow: 0 2px 8px #23294655;
+}
+.trello-card-icon {
+  font-size: 2.1rem;
+  color: #00CFFF;
+  filter: drop-shadow(0 2px 8px #00CFFF55);
+  margin-right: 0.2rem;
+}
+.btn-trello-glass {
+  background: #fff;
+  color: #232946;
+  font-weight: 700;
+  border-radius: 1.1rem;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  box-shadow: 0 2px 8px #00CFFF22;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.btn-trello-glass:hover {
+  background: #00CFFF;
+  color: #fff;
+  box-shadow: 0 4px 16px #00CFFF44;
+}
+.trello-card-body {
+  background: linear-gradient(120deg, #181C2A 0%, #232946 100%);
+  border-bottom-left-radius: 2.2rem;
+  border-bottom-right-radius: 2.2rem;
+  padding: 1.5rem 2rem 1.2rem 2rem;
+}
+.trello-card-section {
+  font-size: 1.13rem;
+  font-weight: 800;
+  color: #7F9CF5;
+  letter-spacing: 0.7px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.trello-alert-glass {
+  background: rgba(127,156,245,0.10) !important;
+  color: #A3A9B8 !important;
+  border: none !important;
+  border-radius: 1.1rem !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+}
+.trello-tareas-list {
+  margin-top: 0.5rem;
+}
+.trello-tarea-item {
+  background: rgba(36,40,56,0.97);
+  border-radius: 1.1rem;
+  margin-bottom: 0.6rem;
+  border: none;
+  box-shadow: 0 2px 8px #23294622;
+  padding: 0.7rem 1.2rem 0.7rem 1.2rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+}
+.trello-tarea-titulo {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.1rem;
+}
+.trello-tarea-asignado {
+  font-size: 0.98rem;
+  color: #A3A9B8;
+  font-weight: 500;
+}
+.trello-badge-completada {
+  background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+  color: #232946;
+  font-weight: 800;
+  border-radius: 1.1rem;
+  font-size: 0.98rem;
+  padding: 0.4rem 1.1rem;
+}
+.trello-badge-progreso {
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  color: #fff;
+  font-weight: 800;
+  border-radius: 1.1rem;
+  font-size: 0.98rem;
+  padding: 0.4rem 1.1rem;
+}
+.trello-badge-pendiente {
+  background: linear-gradient(90deg, #fa5252 0%, #ff922b 100%);
+  color: #fff;
+  font-weight: 800;
+  border-radius: 1.1rem;
+  font-size: 0.98rem;
+  padding: 0.4rem 1.1rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form[action$="nueva-modal"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const modal = form.closest('.modal');
+                const formData = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Cerrar el modal
+                        if (modal) {
+                            const modalInstance = bootstrap.Modal.getInstance(modal);
+                            if (modalInstance) modalInstance.hide();
+                        }
+                        // Recargar la página para ver la nueva tarea
+                        location.reload();
+                    } else {
+                        alert('Error al crear tarea: ' + (data.message || 'Intenta de nuevo.'));
+                    }
+                })
+                .catch(() => alert('Error al crear tarea.'));
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-sync-trello').forEach(btn => {
+        btn.onclick = function() {
+            const equipoId = btn.getAttribute('data-equipo-id');
+            btn.disabled = true;
+            const original = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Actualizando...';
+            fetch(`/tareas/sincronizar_trello_equipo/${equipoId}`, {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    if(data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Error al sincronizar con Trello.');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    alert('Error al sincronizar con Trello.');
+                });
+        };
+    });
+</script>
+{% endblock %} 

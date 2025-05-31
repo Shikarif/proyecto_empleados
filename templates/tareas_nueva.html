@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.nueva-tarea-bg {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+}
+.nueva-tarea-glass {
+    width: 100%;
+    max-width: 520px;
+    background: rgba(24,28,42,0.92);
+    backdrop-filter: blur(8px) saturate(1.2);
+    border-radius: 2.2rem;
+    box-shadow: 0 8px 32px #23294688, 0 2px 8px #00CFFF44;
+    padding: 2.7rem 2.2rem 2.2rem 2.2rem;
+    border: 1.5px solid #7F9CF5;
+    animation: fadeInUp 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.nueva-tarea-glass h2 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #00CFFF;
+    margin-bottom: 2.2rem;
+    letter-spacing: 1.2px;
+    text-shadow: 0 2px 8px #23294611;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+.nueva-tarea-glass .form-label {
+    font-weight: 700;
+    color: #7F9CF5;
+    font-size: 1.08rem;
+    margin-bottom: 0.2rem;
+    letter-spacing: 0.3px;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.nueva-tarea-glass .form-control, .nueva-tarea-glass .form-select {
+    font-size: 1.12rem;
+    border-radius: 1.1rem;
+    padding: 0.85rem 1.2rem 0.85rem 2.7rem;
+    box-shadow: 0 2px 8px #2329460a;
+    border: 1.5px solid #00CFFF;
+    margin-bottom: 1.1rem;
+    background: rgba(24,28,42,0.97);
+    color: #fff;
+    transition: border 0.2s, box-shadow 0.2s;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.nueva-tarea-glass .form-control:focus, .nueva-tarea-glass .form-select:focus {
+    border: 1.5px solid #7F9CF5;
+    box-shadow: 0 4px 16px #00CFFF33;
+    background: #181C2A;
+    color: #fff;
+}
+.nueva-tarea-glass .input-icon {
+    position: absolute;
+    left: 1.1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #00CFFF;
+    font-size: 1.25rem;
+    opacity: 0.85;
+    pointer-events: none;
+    transition: color 0.2s;
+}
+.nueva-tarea-glass .form-group:focus-within .input-icon {
+    color: #7F9CF5;
+}
+.nueva-tarea-glass .form-group {
+    position: relative;
+    width: 100%;
+}
+.nueva-tarea-glass .btn-primary {
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    border: none;
+    font-weight: 800;
+    font-size: 1.13rem;
+    padding: 0.7rem 2.2rem;
+    border-radius: 1.2rem;
+    box-shadow: 0 2px 8px #00CFFF22;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+.nueva-tarea-glass .btn-primary:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    box-shadow: 0 4px 16px #7F9CF533;
+    transform: scale(1.04);
+}
+.nueva-tarea-glass .btn-secondary {
+    font-size: 1.13rem;
+    padding: 0.7rem 2.2rem;
+    border-radius: 1.2rem;
+    font-weight: 700;
+    margin-left: 0.7rem;
+    background: #232946;
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px #23294611;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.nueva-tarea-glass .btn-secondary:hover {
+    background: #7F9CF5;
+    color: #181C2A;
+    transform: scale(1.04);
+}
+.nueva-tarea-glass .d-flex {
+    width: 100%;
+}
+</style>
+<!-- Offcanvas Nueva Tarea -->
+<div class="offcanvas offcanvas-end show" tabindex="-1" id="offcanvasNuevaTarea" aria-labelledby="offcanvasNuevaTareaLabel" style="visibility: visible; width: 540px; background: none; border: none;">
+  <div class="offcanvas-header" style="border-bottom: 1px solid #7F9CF5; background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%); background-size: 200% 200%; animation: gradientMove 6s ease-in-out infinite alternate; border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; color: #fff; text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;">
+    <h2 class="offcanvas-title" id="offcanvasNuevaTareaLabel" style="font-size:2.2rem;font-weight:900;color:#00CFFF;letter-spacing:1.2px;"><i class="fas fa-plus-circle"></i> Nueva Tarea</h2>
+    <button type="button" class="btn-close btn-close-white" onclick="window.history.back()" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body" style="background: rgba(24,28,42,0.92); color: #fff; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; box-shadow: 0 2px 8px #23263a22; padding: 2rem 1.5rem 1.5rem 1.5rem;">
+    <form method="POST" action="{{ url_for('tareas.nueva_tarea_form') }}" style="width:100%;">
+      <div class="form-group mb-3">
+        <label for="titulo" class="form-label">Título</label>
+        <span class="input-icon"><i class="fas fa-heading"></i></span>
+        <input type="text" class="form-control" id="titulo" name="titulo" required maxlength="100" placeholder="Ej: Reporte mensual, Actualizar web...">
+      </div>
+      <div class="form-group mb-3">
+        <label for="descripcion" class="form-label">Descripción</label>
+        <span class="input-icon"><i class="fas fa-align-left"></i></span>
+        <textarea class="form-control" id="descripcion" name="descripcion" rows="3" required placeholder="Describe la tarea..."></textarea>
+      </div>
+      <div class="form-group mb-3">
+        <label for="fecha_limite" class="form-label">Fecha límite</label>
+        <span class="input-icon"><i class="fas fa-calendar-alt"></i></span>
+        <input type="date" class="form-control" id="fecha_limite" name="fecha_limite" required>
+      </div>
+      <div class="form-group mb-3">
+        <label for="prioridad" class="form-label">Prioridad</label>
+        <span class="input-icon"><i class="fas fa-exclamation-circle"></i></span>
+        <select class="form-select" id="prioridad" name="prioridad" required>
+          <option value="baja">Baja</option>
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+        </select>
+      </div>
+      <div class="form-group mb-3">
+        <label for="equipo_id" class="form-label">Equipo</label>
+        <span class="input-icon"><i class="fas fa-users"></i></span>
+        <select class="form-select" id="equipo_id" name="equipo_id" required {% if user_rol == 'lider' %}disabled{% endif %}>
+          {% for equipo in equipos %}
+          <option value="{{ equipo.id }}" {% if user_rol == 'lider' and equipo.id == user_equipo %}selected{% endif %}>{{ equipo.nombre }}</option>
+          {% endfor %}
+        </select>
+        {% if user_rol == 'lider' %}
+        <input type="hidden" name="equipo_id" value="{{ user_equipo }}">
+        {% endif %}
+      </div>
+      <div class="form-group mb-3">
+        <label for="asignado_a" class="form-label">Asignar a</label>
+        <span class="input-icon"><i class="fas fa-user"></i></span>
+        <select class="form-select" id="asignado_a" name="asignado_a">
+          <option value="">Sin asignar</option>
+          {% if user_rol == 'lider' %}
+            {% for emp in equipo_usuarios[user_equipo] %}
+              <option value="{{ emp.id }}">{{ emp.nombre }} {{ emp.apellido }}</option>
+            {% endfor %}
+          {% else %}
+            {# Para jefe, los options se generarán dinámicamente con JS #}
+          {% endif %}
+        </select>
+      </div>
+      <div class="form-group mb-4">
+        <label for="habilidades_requeridas" class="form-label">Habilidades requeridas</label>
+        <span class="input-icon"><i class="fas fa-lightbulb"></i></span>
+        <input type="text" class="form-control" id="habilidades_requeridas" name="habilidades_requeridas" placeholder="Ej: Python, Excel">
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Crear tarea</button>
+        <a href="{{ url_for('tareas.listar_tareas') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+<style>
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.offcanvas-header, .offcanvas-title {
+  color: #fff;
+  text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+.offcanvas-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #00CFFF;
+  letter-spacing: 1.2px;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.offcanvas-body .form-label {
+  font-weight: 700;
+  color: #7F9CF5;
+  font-size: 1.08rem;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.3px;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.offcanvas-body .form-control, .offcanvas-body .form-select {
+  font-size: 1.12rem;
+  border-radius: 1.1rem;
+  padding: 0.85rem 1.2rem 0.85rem 2.7rem;
+  box-shadow: 0 2px 8px #2329460a;
+  border: 1.5px solid #00CFFF;
+  margin-bottom: 1.1rem;
+  background: #232946;
+  color: #fff;
+  transition: border 0.2s, box-shadow 0.2s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.offcanvas-body .form-control:focus, .offcanvas-body .form-select:focus {
+  border: 1.5px solid #7F9CF5;
+  box-shadow: 0 4px 16px #00CFFF33;
+  background: #181C2A;
+  color: #fff;
+}
+.offcanvas-body .input-icon {
+  position: absolute;
+  left: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #00CFFF;
+  font-size: 1.25rem;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+.offcanvas-body .form-group:focus-within .input-icon {
+  color: #7F9CF5;
+}
+.offcanvas-body .form-group {
+  position: relative;
+  width: 100%;
+}
+.offcanvas-body .btn-primary {
+  background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+  border: none;
+  font-weight: 800;
+  font-size: 1.13rem;
+  padding: 0.7rem 2.2rem;
+  border-radius: 1.2rem;
+  box-shadow: 0 2px 8px #00CFFF22;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+.offcanvas-body .btn-primary:hover {
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  box-shadow: 0 4px 16px #7F9CF533;
+  transform: scale(1.04);
+}
+.offcanvas-body .btn-secondary {
+  font-size: 1.13rem;
+  padding: 0.7rem 2.2rem;
+  border-radius: 1.2rem;
+  font-weight: 700;
+  margin-left: 0.7rem;
+  background: #232946;
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px #23294611;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+.offcanvas-body .btn-secondary:hover {
+  background: #7F9CF5;
+  color: #181C2A;
+  transform: scale(1.04);
+}
+.offcanvas-body .d-flex {
+  width: 100%;
+}
+</style>
+{% if user_rol == 'jefe' %}
+<script>
+const equipoUsuarios = {{ equipo_usuarios|tojson }};
+document.addEventListener('DOMContentLoaded', function() {
+  const equipoSelect = document.getElementById('equipo_id');
+  const asignadoSelect = document.getElementById('asignado_a');
+  function actualizarMiembros() {
+    const equipoId = equipoSelect.value;
+    // Limpiar opciones excepto "Sin asignar"
+    asignadoSelect.innerHTML = '<option value="">Sin asignar</option>';
+    if (equipoUsuarios[equipoId]) {
+      equipoUsuarios[equipoId].forEach(emp => {
+        const opt = document.createElement('option');
+        opt.value = emp.id;
+        opt.textContent = emp.nombre + ' ' + emp.apellido;
+        asignadoSelect.appendChild(opt);
+      });
+    }
+  }
+  equipoSelect.addEventListener('change', actualizarMiembros);
+  actualizarMiembros();
+});
+</script>
+{% endif %}
+{% endblock %} 

@@ -1,206 +1,353 @@
 {% extends "base.html" %}
 
-{% block contenido %}
-<div class="card shadow-lg border-0 modern-card animate__animated animate__fadeInUp">
-    <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center rounded-top-4 py-3 px-4">
-        <h4 class="mb-0 d-flex align-items-center gap-2">
-            <i class="fas fa-list animate__animated animate__fadeInLeft"></i> Lista de Empleados
-        </h4>
-        <a href="{{ url_for('estadisticas') }}" class="btn btn-light btn-lg fw-bold shadow-sm modern-btn-stats animate__animated animate__fadeInRight">
-            <i class="fas fa-chart-bar"></i> Ver Estadísticas
-        </a>
-    </div>
-    <div class="card-body p-4">
-        <!-- Barra de búsqueda y filtros -->
-        <form action="{{ url_for('buscar') }}" method="GET" class="mb-4">
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-5">
-                    <div class="form-floating">
-                        <input type="text" class="form-control modern-input" id="busqueda" name="q" placeholder="Buscar por nombre, apellido o correo..." value="{{ query if query else '' }}">
-                        <label for="busqueda"><i class="fas fa-search"></i> Buscar...</label>
-                    </div>
-                </div>
-                <div class="col-12 col-md-3">
-                    <div class="form-floating">
-                        <select class="form-select modern-input" id="rolFiltro" name="rol">
-                            <option value="">Todos los roles</option>
-                            <option value="jefe" {% if rol_filtro == 'jefe' %}selected{% endif %}>Jefe</option>
-                            <option value="lider" {% if rol_filtro == 'lider' %}selected{% endif %}>Líder</option>
-                            <option value="practicante" {% if rol_filtro == 'practicante' %}selected{% endif %}>Practicante</option>
-                        </select>
-                        <label for="rolFiltro"><i class="fas fa-user-tag"></i> Rol</label>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4 d-flex justify-content-end gap-2">
-                    <button class="btn btn-primary btn-lg px-4 modern-btn-search animate__animated animate__pulse animate__infinite" type="submit" title="Buscar">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    {% if query or rol_filtro %}
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-4 modern-btn-clear animate__animated animate__fadeIn">
-                            <i class="fas fa-times"></i>
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </form>
-
-        {% if empleados %}
-            <div class="table-responsive rounded-4 shadow-sm animate__animated animate__fadeInUp animate__delay-1s">
-                <table id="tablaEmpleados" class="table table-striped table-hover modern-table align-middle mb-0">
-                    <thead class="table-light sticky-top">
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Apellido</th>
-                            <th>Correo</th>
-                            <th>Rol</th>
-                            <th>Equipo</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for empleado in empleados %}
-                        <tr class="modern-row">
-                            <td class="d-flex align-items-center gap-2">
-                                <div class="avatar-circle bg-primary text-white shadow-sm fw-bold fs-6 animate__animated animate__fadeIn">
-                                    {{ empleado[1][0] }}
-                                </div>
-                                <span class="fw-semibold">{{ empleado[1] }}</span>
-                            </td>
-                            <td>{{ empleado[2] }}</td>
-                            <td>{{ empleado[3] }}</td>
-                            <td>
-                                <span class="badge bg-gradient-info text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">{{ empleado[6]|capitalize }}</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-gradient-success text-white px-3 py-2 shadow-sm animate__animated animate__fadeInRight">{{ empleado[5] or 'No asignado' }}</span>
-                            </td>
-                            <td>
-                                <a href="{{ url_for('editar', id=empleado[0]) }}" class="btn btn-sm btn-primary modern-btn-action me-1 animate__animated animate__bounceIn" title="Editar"><i class="fas fa-edit"></i></a>
-                                <a href="{{ url_for('eliminar', id=empleado[0]) }}" class="btn btn-sm btn-danger modern-btn-action animate__animated animate__bounceIn" title="Eliminar"><i class="fas fa-trash"></i></a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="alert alert-info rounded-3 mt-4 animate__animated animate__fadeIn">
-                <i class="fas fa-info-circle"></i> 
-                {% if query %}
-                    No se encontraron empleados que coincidan con la búsqueda.
-                {% else %}
-                    No hay empleados registrados.
-                {% endif %}
-            </div>
-        {% endif %}
-    </div>
+{% block content %}
+<!-- Banner superior con gradiente animado y logo -->
+<div class="inicio-banner-gradient-animated d-flex align-items-center justify-content-between flex-wrap mb-4 animate__animated animate__fadeInDown">
+  <div class="inicio-banner-text">
+    <h1 class="fw-bold mb-1 text-white display-4"><i class="fas fa-laptop-medical me-2"></i>APM INVERSIONES EIRL</h1>
+    <p class="fs-4 text-white mb-3">Socio estratégico en el crecimiento de clínicas y profesionales de la salud</p>
+    <div class="inicio-banner-divider"></div>
+    <span class="inicio-banner-badge">Innovación & Tecnología en Salud</span>
+  </div>
+  <div class="inicio-banner-img-wrapper-animated">
+    <img src="{{ url_for('static', filename='img/Reflexo_Perulogo.png') }}" alt="Tecnología y salud" class="inicio-banner-img-animated animate__animated animate__fadeInRight">
+  </div>
 </div>
+<!-- Grid principal de información (KPIs informativos con efecto glass) -->
+<div class="inicio-grid-pro container-fluid p-0 animate__animated animate__fadeInUp">
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-1s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/3208/3208720.png" alt="Misión" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#00CFFF;">Misión</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">Ser el socio estratégico en el crecimiento de clínicas y profesionales de la salud, implementando soluciones de marketing digital personalizadas e integración de tecnologías CRM y ERP.</div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-2s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Visión" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#7F9CF5;">Visión</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">Liderar la transformación digital del sector salud, impulsando el crecimiento sostenible de clínicas y profesionales visionarios con soluciones tecnológicas y de marketing innovadoras.</div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-3s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" alt="Objetivo" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#FFB347;">Objetivo</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">Lograr que clínicas y profesionales experimenten un crecimiento constante y sostenible mediante estrategias digitales y tecnológicas avanzadas.</div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-4s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135712.png" alt="Valores" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#7F9CF5;">Valores</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">
+      <div class="d-flex flex-wrap gap-3 justify-content-center">
+        <span class="valor-badge-glass"><i class="fas fa-handshake"></i> Honestidad</span>
+        <span class="valor-badge-glass valor-badge-amarillo"><i class="fas fa-lightbulb"></i> Innovación</span>
+        <span class="valor-badge-glass valor-badge-verde"><i class="fas fa-users"></i> Respeto</span>
+        <span class="valor-badge-glass valor-badge-cian"><i class="fas fa-award"></i> Calidad</span>
+      </div>
+    </div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-5s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/2721/2721296.png" alt="Servicios" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#00CFFF;">Servicios principales</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">
+      <ul class="mb-2 text-start" style="list-style:none;padding-left:0;">
+        <li><i class="fas fa-globe me-2 text-info"></i>Desarrollo y mantenimiento web</li>
+        <li><i class="fas fa-bullhorn me-2 text-success"></i>Marketing digital (Google Ads, Facebook Ads, SEO)</li>
+        <li><i class="fas fa-network-wired me-2 text-warning"></i>Integración CRM y ERP</li>
+        <li><i class="fas fa-share-alt me-2 text-secondary"></i>Publicidad en redes sociales</li>
+      </ul>
+    </div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-6s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135789.png" alt="Público" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#00CFFF;">¿A quién va dirigido?</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">
+      <ul class="mb-2 text-start" style="list-style:none;padding-left:0;">
+        <li><i class="fas fa-clinic-medical me-2 text-primary"></i>Clínicas consolidadas y en expansión</li>
+        <li><i class="fas fa-user-md me-2 text-info"></i>Profesionales de la salud independientes</li>
+        <li><i class="fas fa-network-wired me-2 text-warning"></i>Redes de clínicas/franquicias</li>
+        <li><i class="fas fa-hospital me-2 text-success"></i>Instituciones de salud</li>
+      </ul>
+    </div>
+  </div>
+  <div class="kpi-glass-card animate__animated animate__fadeInUp animate__delay-7s">
+    <div class="kpi-icon-glass mb-2"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135776.png" alt="Sistema" class="inicio-icon-img-pro"></div>
+    <div class="kpi-label-glass" style="color:#7F9CF5;">Sobre el sistema</div>
+    <div class="kpi-value-glass" style="font-size:1.1rem;font-weight:500;color:#fff;text-shadow:none;letter-spacing:0;animation:none;">Esta plataforma digitaliza y optimiza la gestión de empleados, equipos y tareas en clínicas y empresas de salud, integrando herramientas modernas como Trello y paneles de control avanzados para impulsar la eficiencia y el crecimiento.</div>
+  </div>
+</div>
+<!-- Franja de testimonios/motivacional -->
+<div class="inicio-testimonios-franja-glass animate__animated animate__fadeInUp animate__delay-8s">
+  <div class="inicio-testimonio-item-glass">
+    <span class="testimonio-icon-glass text-cian"><i class="fas fa-quote-left"></i></span>
+    <span class="testimonio-text-glass">"La tecnología en salud no solo transforma clínicas, transforma vidas."</span>
+  </div>
+  <div class="inicio-testimonio-item-glass">
+    <span class="testimonio-icon-glass text-verde"><i class="fas fa-quote-left"></i></span>
+    <span class="testimonio-text-glass">"Innovar es cuidar mejor."</span>
+  </div>
+  <div class="inicio-testimonio-item-glass">
+    <span class="testimonio-icon-glass text-cian"><i class="fas fa-quote-left"></i></span>
+    <span class="testimonio-text-glass">"El futuro de la salud es digital, seguro y humano."</span>
+  </div>
+</div>
+
 <style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+body, html { height: 100%; min-height: 100vh; }
+.inicio-banner-gradient-animated {
+  width: 100%;
+  min-height: 220px;
+  background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%);
+  background-size: 200% 200%;
+  animation: gradientMove 6s ease-in-out infinite alternate;
+  border-radius: 2.2rem;
+  box-shadow: 0 8px 32px #23263a22, 0 1.5px 8px #5c7cfa22;
+  padding: 3.2rem 4rem 3.2rem 2.8rem;
+  margin-top: 1.5rem;
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
 }
-.bg-gradient-info {
-    background: linear-gradient(135deg, #3498db, #2ecc71) !important;
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
-.bg-gradient-success {
-    background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+.inicio-banner-img-wrapper-animated {
+  background: #fff;
+  border-radius: 1.7rem;
+  box-shadow: 0 8px 32px #23263a22, 0 1.5px 8px #5c7cfa22;
+  padding: 1.1rem 1.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid #e3f0ff;
+  min-width: 200px;
+  min-height: 140px;
+  transition: box-shadow 0.3s, transform 0.2s;
 }
-.modern-card {
-    border-radius: 1.5rem !important;
-    overflow: hidden;
-    transition: box-shadow 0.3s, transform 0.2s;
+.inicio-banner-img-wrapper-animated:hover {
+  box-shadow: 0 16px 48px #5c7cfa33, 0 4px 16px #51cf6622;
+  transform: scale(1.04) rotate(-2deg);
 }
-.modern-card:hover {
-    box-shadow: 0 8px 32px #23263a33, 0 1.5px 8px #5c7cfa22;
-    transform: translateY(-4px) scale(1.02);
+.inicio-banner-img-animated {
+  max-height: 140px;
+  max-width: 200px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 4px 16px #1e90ff33);
 }
-.card-header {
-    border-top-left-radius: 1.5rem !important;
-    border-top-right-radius: 1.5rem !important;
-    font-size: 1.15rem;
+.inicio-banner-divider {
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  border-radius: 2px;
+  margin: 1.2rem 0 1.1rem 0;
 }
-.avatar-circle {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-    box-shadow: 0 2px 8px #5c7cfa22;
-    border: 2.5px solid #fff;
-    background: linear-gradient(135deg, #5c7cfa 0%, #51cf66 100%);
-    letter-spacing: 1px;
+.inicio-banner-badge {
+  background: #fff;
+  color: #00CFFF;
+  font-weight: 700;
+  border-radius: 1.2em;
+  padding: 0.5em 1.5em;
+  font-size: 1.1em;
+  box-shadow: 0 1px 8px #23263a11;
+  letter-spacing: 0.5px;
+  display: inline-block;
 }
-.badge {
-    padding: 0.55em 1.2em;
-    font-weight: 600;
-    font-size: 1.01em;
-    border-radius: 1.2em;
-    box-shadow: 0 1px 4px #23263a11;
-    letter-spacing: 0.5px;
+.inicio-grid-pro {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2.5rem;
+  margin: 0 auto 2.5rem auto;
+  padding: 0 2vw 2vw 2vw;
+  min-height: 60vh;
+  align-items: stretch;
 }
-.modern-table tbody tr.modern-row {
-    transition: background 0.18s, box-shadow 0.18s;
-    cursor: pointer;
+.glass-card-pro {
+  background: rgba(255,255,255,0.93);
+  border-radius: 2rem;
+  box-shadow: 0 12px 36px #3b3f5c22, 0 2px 12px #5c7cfa22;
+  backdrop-filter: blur(12px);
+  border: 2px solid #b6d0f7;
+  padding: 2.5rem 2.2rem 1.7rem 2.2rem;
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: box-shadow 0.3s, transform 0.2s, background 0.3s;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+  position: relative;
+  overflow: hidden;
 }
-.modern-table tbody tr.modern-row:hover {
-    background: #f4f6fb !important;
-    box-shadow: 0 2px 12px #5c7cfa11;
+.glass-card-pro:hover {
+  box-shadow: 0 24px 64px #5c7cfa33, 0 8px 32px #51cf6622;
+  transform: translateY(-10px) scale(1.045) rotate(-1deg);
+  background: rgba(255,255,255,0.98);
 }
-.modern-btn-stats {
-    border-radius: 1.2em;
-    box-shadow: 0 2px 8px #5c7cfa22;
-    transition: box-shadow 0.2s, transform 0.18s;
+.inicio-card-icon-pro {
+  width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.7rem;
+  filter: drop-shadow(0 2px 8px #5c7cfa22);
 }
-.modern-btn-stats:hover {
-    box-shadow: 0 4px 16px #5c7cfa44, 0 0 8px #5c7cfa88;
-    transform: scale(1.08);
+.inicio-icon-img-pro {
+  width: 54px; height: 54px; object-fit: contain;
 }
-.modern-btn-search, .modern-btn-clear {
-    border-radius: 1.2em;
-    box-shadow: 0 2px 8px #5c7cfa22;
-    transition: box-shadow 0.2s, transform 0.18s;
+.inicio-icon-img-sm-pro {
+  width: 40px; height: 40px; object-fit: contain;
 }
-.modern-btn-search:hover, .modern-btn-clear:hover {
-    box-shadow: 0 4px 16px #51cf6644, 0 0 8px #51cf6688;
-    transform: scale(1.08);
+.inicio-icon-img-xs-pro {
+  width: 24px; height: 24px; object-fit: contain; vertical-align: middle;
 }
-.modern-btn-action {
-    border-radius: 1.2em;
-    box-shadow: 0 1px 4px #23263a11;
-    transition: box-shadow 0.2s, transform 0.18s;
+.valor-badge-glass {
+  background: #fff;
+  color: #232946;
+  border-radius: 1.2em;
+  padding: 0.55em 1.3em;
+  font-weight: 700;
+  font-size: 1.08em;
+  box-shadow: 0 1px 8px #23263a11;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.3em;
+  border: 1.5px solid #e3f0ff;
+  transition: box-shadow 0.2s, border 0.2s, color 0.2s;
 }
-.modern-btn-action:hover {
-    box-shadow: 0 4px 16px #fa525244, 0 0 8px #fa525288;
-    transform: scale(1.12);
+.valor-badge-glass i { font-size: 1.2em; margin-right: 0.4em; color: #00CFFF; }
+.valor-badge-amarillo i { color: #FFB347; }
+.valor-badge-verde i { color: #2DE1FC; }
+.valor-badge-cian i { color: #7F9CF5; }
+.valor-badge-glass:hover {
+  box-shadow: 0 4px 16px #00CFFF33;
+  border: 1.5px solid #00CFFF;
+  color: #00CFFF;
 }
-.modern-input {
-    border-radius: 1.2em !important;
-    box-shadow: 0 1px 4px #23263a11;
-    transition: box-shadow 0.2s, border-color 0.2s;
+
+.inicio-testimonios-franja-glass {
+  width: 100%;
+  background: rgba(24,28,42,0.92);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px #23263a33;
+  padding: 2.2rem 2vw 2.2rem 2vw;
+  margin: 0 auto 2.5rem auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  align-items: center;
+  gap: 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #fff;
+  backdrop-filter: blur(10px) saturate(1.2);
 }
-.modern-input:focus {
-    box-shadow: 0 2px 8px #5c7cfa44;
-    border-color: #5c7cfa;
+.inicio-testimonio-item-glass {
+  display: flex;
+  align-items: center;
+  gap: 1.1em;
+  font-style: italic;
+  background: rgba(35,41,70,0.88);
+  border-radius: 1.2em;
+  padding: 1.1em 2em;
+  box-shadow: 0 1px 8px #23263a11;
+  min-width: 260px;
+  max-width: 420px;
+  color: #fff;
+  border: 1.5px solid #7F9CF5;
 }
-.table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: #f8f9fa;
+.testimonio-icon-glass {
+  font-size: 1.7em;
+  color: #00CFFF;
+  min-width: 1.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.text-cian { color: #00CFFF !important; }
+.text-verde { color: #2DE1FC !important; }
+.testimonio-text-glass {
+  font-size: 1.13em;
+  color: #fff;
+  font-style: italic;
+  font-weight: 600;
+  text-shadow: 0 2px 8px #23294655;
 }
 @media (max-width: 900px) {
-    .modern-card { border-radius: 1rem !important; }
-    .card-header { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; }
-    .avatar-circle { width: 32px; height: 32px; font-size: 1rem; }
+  .inicio-banner-gradient-animated { padding: 1.2rem 1rem 1.2rem 1rem; border-radius: 1.2rem; }
+  .inicio-banner-img-wrapper-animated { min-width: 110px; min-height: 70px; padding: 0.5rem 0.7rem; }
+  .inicio-banner-img-animated { max-height: 70px; max-width: 110px; }
+  .inicio-grid-pro { gap: 1.2rem; }
+  .glass-card-pro { border-radius: 1.1rem; padding: 1.2rem 1rem; }
+  .inicio-card-icon-pro { width: 38px; height: 38px; }
+  .inicio-icon-img-pro { width: 32px; height: 32px; }
+  .inicio-icon-img-sm-pro { width: 26px; height: 26px; }
+  .inicio-icon-img-xs-pro { width: 16px; height: 16px; }
+  .inicio-testimonios-franja-glass { border-radius: 0.8rem; padding: 1.2rem 1vw; gap: 1.2rem; font-size: 1.05rem; }
+  .inicio-testimonio-item-glass { min-width: 160px; max-width: 320px; padding: 0.7em 1em; }
 }
 @media (max-width: 600px) {
-    .modern-card { border-radius: 0.7rem !important; }
-    .card-header { border-top-left-radius: 0.7rem !important; border-top-right-radius: 0.7rem !important; }
-    .avatar-circle { width: 26px; height: 26px; font-size: 0.9rem; }
-    .container-fluid-custom { padding: 0.5rem !important; }
+  .inicio-banner-gradient-animated { flex-direction: column; align-items: flex-start; padding: 1rem 0.5rem; }
+  .inicio-banner-img-wrapper-animated { margin-left: 0; margin-top: 1rem; }
+  .inicio-banner-img-animated { margin-left: 0; margin-top: 0; }
+  .inicio-grid-pro { grid-template-columns: 1fr; gap: 1rem; padding: 0 0.5rem 1.5rem 0.5rem; }
+  .glass-card-pro { border-radius: 0.7rem; padding: 1rem 0.7rem; }
+  .inicio-card-icon-pro { width: 28px; height: 28px; }
+  .inicio-icon-img-pro { width: 22px; height: 22px; }
+  .inicio-icon-img-sm-pro { width: 16px; height: 16px; }
+  .inicio-icon-img-xs-pro { width: 12px; height: 12px; }
+  .inicio-testimonios-franja-glass { border-radius: 0.5rem; padding: 0.7rem 0.2vw; gap: 0.5rem; font-size: 0.98rem; }
+  .inicio-testimonio-item-glass { min-width: 90px; max-width: 180px; padding: 0.5em 0.7em; }
+}
+.kpi-glass-card {
+  background: rgba(24,28,42,0.82);
+  border-radius: 2rem;
+  box-shadow: 0 8px 32px #23294655, 0 2px 8px #00CFFF33;
+  border: 2.5px solid #7F9CF5;
+  backdrop-filter: blur(10px) saturate(1.2);
+  padding: 2.2rem 1.5rem 1.5rem 1.5rem;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-glass-card:hover {
+  box-shadow: 0 20px 48px #00CFFF44, 0 4px 16px #7F9CF544;
+  border: 2.5px solid #00CFFF;
+  transform: translateY(-8px) scale(1.04);
+}
+.kpi-icon-glass {
+  font-size: 2.8rem;
+  color: #00CFFF;
+  margin-bottom: 0.7rem;
+  animation: kpiPulse 1.5s infinite alternate;
+  filter: drop-shadow(0 2px 8px #00CFFF55);
+}
+@keyframes kpiPulse {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.25); }
+}
+.kpi-label-glass {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #7F9CF5;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+}
+.kpi-value-glass {
+  font-size: 2.7rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px #23294655;
+  letter-spacing: 1.5px;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+}
+@keyframes glassPop {
+  from { opacity: 0; transform: scale(0.95);}
+  to { opacity: 1; transform: scale(1);}
 }
 </style>
 {% endblock %}

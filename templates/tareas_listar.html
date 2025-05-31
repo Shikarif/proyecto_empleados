@@ -1,0 +1,1091 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.tareas-modern-container {
+    min-height: 80vh;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 2rem 2rem;
+    background: rgba(255,255,255,0.10);
+    backdrop-filter: blur(8px) saturate(1.2);
+    border-radius: 2rem;
+    box-shadow: 0 8px 32px #23263a22, 0 2px 8px #5c7cfa22;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+.tareas-modern-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%);
+    background-size: 200% 200%;
+    animation: gradientMove 6s ease-in-out infinite alternate;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 16px #23263a22;
+    padding: 2rem 2.5rem 1.5rem 2.5rem;
+    margin-bottom: 0.5rem;
+}
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.tareas-modern-header h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 0;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+.tareas-modern-header .btn {
+    font-size: 1.1rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: 1.2rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px #23263a22;
+    border: none;
+    transition: background 0.2s, color 0.2s;
+}
+.tareas-modern-header .btn-success {
+    background: linear-gradient(90deg, #2DE1FC 0%, #00CFFF 100%);
+    color: #fff;
+}
+.tareas-modern-header .btn-primary {
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+}
+.tareas-modern-header .btn-success:hover, .tareas-modern-header .btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 16px #00CFFF33;
+}
+.tareas-modern-filtros {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: nowrap;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+.tareas-modern-filtros .form-control, .tareas-modern-filtros .form-select {
+    font-size: 1rem;
+    border-radius: 0.8rem;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 2px 8px #5c7cfa11;
+    min-width: 180px;
+    max-width: 220px;
+    flex: 1 1 0;
+    background: #232946;
+    color: #fff;
+    border: 1.5px solid #7F9CF5;
+}
+.tareas-modern-filtros .form-control::placeholder {
+    color: #A3A9B8;
+    opacity: 1;
+}
+.tareas-modern-filtros .btn {
+    font-size: 1rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 0.8rem;
+    white-space: nowrap;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    border: none;
+}
+.tareas-modern-filtros .btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 16px #00CFFF33;
+}
+.tareas-modern-table-container {
+    flex: 1;
+    background: rgba(24,28,42,0.92);
+    border-radius: 1.5rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+}
+.tareas-modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1.08rem;
+    color: #fff;
+    background: none;
+}
+.tareas-modern-table thead th {
+    background: linear-gradient(120deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding: 1rem 0.7rem;
+    border: none;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+.tareas-modern-table tbody tr {
+    background: #181C2A;
+    color: #fff;
+    transition: background 0.2s;
+}
+.tareas-modern-table tbody tr:hover {
+    background: #232946;
+}
+.tareas-modern-table td, .tareas-modern-table th {
+    color: #fff;
+    border: none;
+    font-weight: 500;
+    text-shadow: 0 1px 4px #23294688;
+}
+.tareas-modern-table .fw-semibold {
+    font-weight: 700;
+    color: #00CFFF;
+}
+.tareas-modern-table .badge {
+    font-size: 1rem;
+    padding: 0.5em 1.1em;
+    border-radius: 1em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: #7F9CF5;
+    color: #fff;
+    border: 1.5px solid #00CFFF;
+    box-shadow: 0 1px 4px #23294622;
+}
+.tareas-modern-table .btn-circular {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    border: none;
+    margin-right: 0.3em;
+    margin-left: 0.1em;
+    transition: box-shadow 0.2s, filter 0.2s;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 0;
+    background: linear-gradient(135deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+}
+.tareas-modern-table .btn-circular.btn-info {
+    background: linear-gradient(135deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+}
+.tareas-modern-table .btn-circular.btn-secondary {
+    background: linear-gradient(135deg, #7F9CF5 0%, #232946 100%);
+    color: #fff;
+}
+.tareas-modern-table .btn-circular:hover {
+    filter: brightness(0.93);
+    box-shadow: 0 4px 16px #5c7cfa33;
+}
+
+/* Modal detalles tarea */
+#modalDetalleTarea .modal-dialog {
+    max-width: 700px;
+}
+#modalDetalleTarea .modal-content {
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 32px #23263a22, 0 2px 8px #5c7cfa22;
+    background: rgba(255,255,255,0.97);
+}
+#modalDetalleTarea .modal-header {
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+}
+#modalDetalleTarea .modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #23263a;
+}
+#modalDetalleTarea .badge {
+    font-size: 1rem;
+    padding: 0.4em 1em;
+    border-radius: 1em;
+    font-weight: 600;
+}
+#modalDetalleTarea .detalle-label {
+    color: #5c7cfa;
+    font-weight: 600;
+    margin-right: 0.5em;
+}
+#modalDetalleTarea .detalle-valor {
+    font-weight: 600;
+    color: #23263a;
+}
+#modalDetalleTarea .adjuntos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+#modalDetalleTarea .adjunto-card {
+    background: #f8f9fa;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+#modalDetalleTarea .adjunto-card .icono {
+    font-size: 2.5rem;
+}
+#modalDetalleTarea .adjunto-card .nombre {
+    font-size: 0.95rem;
+    text-align: center;
+    word-break: break-all;
+}
+.btn-action {
+  background: linear-gradient(135deg, #5c7cfa 0%, #38a1fa 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin: 0 0.2em;
+  box-shadow: 0 2px 8px #23263a11;
+  transition: box-shadow 0.2s, filter 0.2s, background 0.2s;
+}
+.btn-action:hover {
+  filter: brightness(0.93);
+  box-shadow: 0 4px 16px #5c7cfa33;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+.modal-backdrop {
+  z-index: 1050 !important;
+}
+.modal {
+  z-index: 1060 !important;
+}
+/* Mejoras para el offcanvas de detalles */
+#offcanvasTarea .offcanvas-header {
+    border-bottom: 1px solid #7F9CF5;
+    background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%);
+    background-size: 200% 200%;
+    animation: gradientMove 6s ease-in-out infinite alternate;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    color: #fff;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+#offcanvasTarea .offcanvas-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+#offcanvasTarea .offcanvas-body {
+    background: rgba(24,28,42,0.92);
+    color: #fff;
+    border-bottom-left-radius: 1.5rem;
+    border-bottom-right-radius: 1.5rem;
+    box-shadow: 0 2px 8px #23263a22;
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+}
+#offcanvasTarea .detalle-tarea-main {
+    padding: 0.5rem 0.5rem 0 0.5rem;
+}
+#offcanvasTarea .detalle-tarea-titulo {
+    font-size: 2.1rem;
+    font-weight: 900;
+    color: #00CFFF;
+    margin-bottom: 0.2rem;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px #23294655;
+}
+#offcanvasTarea .detalle-tarea-desc {
+    font-size: 1.1rem;
+    color: #A3A9B8;
+    margin-bottom: 1.1rem;
+    margin-top: 0.2rem;
+}
+#offcanvasTarea .detalle-tarea-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem 2.5rem;
+    margin-bottom: 1.2rem;
+}
+#offcanvasTarea .detalle-label {
+    color: #7F9CF5;
+    font-weight: 700;
+    margin-right: 0.5em;
+    font-size: 1.08rem;
+}
+#offcanvasTarea .detalle-valor, #offcanvasTarea .badge {
+    font-weight: 700;
+    font-size: 1.08rem;
+    color: #fff;
+}
+#offcanvasTarea .badge {
+    background: #00CFFF;
+    color: #fff;
+    border-radius: 1em;
+    padding: 0.4em 1em;
+    font-weight: 700;
+    box-shadow: 0 1px 4px #23294622;
+}
+#offcanvasTarea .adjuntos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.3rem;
+    margin-top: 1.2rem;
+}
+#offcanvasTarea .adjunto-card {
+    background: rgba(35,41,70,0.88);
+    border-radius: 1.2rem;
+    box-shadow: 0 2px 12px #23263a13;
+    padding: 1.2rem 1rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 120px;
+    transition: box-shadow 0.18s, transform 0.18s;
+    color: #fff;
+    border: 1.5px solid #7F9CF5;
+}
+#offcanvasTarea .adjunto-card:hover {
+    box-shadow: 0 6px 24px #00CFFF44;
+    transform: translateY(-4px) scale(1.04);
+}
+#offcanvasTarea .adjunto-card .icono {
+    font-size: 2.7rem;
+    margin-bottom: 0.2rem;
+    color: #00CFFF;
+}
+#offcanvasTarea .adjunto-card .nombre {
+    font-size: 1.02rem;
+    text-align: center;
+    word-break: break-all;
+    max-width: 170px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+}
+#offcanvasTarea .input-group {
+    max-width: 100%;
+    min-width: 260px;
+    margin-bottom: 0.7rem;
+    border-radius: 0.9rem;
+    overflow: visible;
+    background: #232946;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 0.3rem 0.5rem;
+    align-items: center;
+}
+#offcanvasTarea .form-control[type="file"] {
+    background: #181C2A;
+    border-radius: 0.9rem 0 0 0.9rem;
+    border: 1.5px solid #00CFFF;
+    font-size: 1.08rem;
+    padding: 0.7rem 1rem;
+    min-width: 180px;
+    max-width: 260px;
+    color: #fff;
+}
+#offcanvasTarea .btn-success {
+    border-radius: 0 0.9rem 0.9rem 0;
+    font-weight: 700;
+    font-size: 1.13rem;
+    padding: 0.7rem 1.5rem;
+    margin-left: 0.5rem;
+    box-shadow: 0 2px 8px #00CFFF44;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    border: none;
+    transition: background 0.18s, box-shadow 0.18s;
+}
+#offcanvasTarea .btn-success:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px #00CFFF44;
+}
+#offcanvasTarea .input-group > * {
+    margin-bottom: 0 !important;
+}
+#offcanvasTarea .input-group input[type="file"]::-webkit-file-upload-button {
+    border-radius: 0.9rem;
+    background: #e9ecef;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    font-size: 1.05rem;
+    color: #23263a;
+    font-weight: 500;
+    margin-right: 0.5rem;
+}
+#offcanvasTarea .input-group input[type="file"]::file-selector-button {
+    border-radius: 0.9rem;
+    background: #e9ecef;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    font-size: 1.05rem;
+    color: #23263a;
+    font-weight: 500;
+    margin-right: 0.5rem;
+}
+#offcanvasTarea .text-muted {
+    font-size: 1.01rem;
+    color: #A3A9B8 !important;
+}
+#offcanvasTarea .adjuntos-upload-box {
+    background: #232946;
+    border-radius: 1.2rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 1.2rem 1rem 1rem 1rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+#offcanvasTarea .adjuntos-upload-box .input-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+    max-width: 100%;
+}
+#offcanvasTarea .adjuntos-upload-box .form-control[type="file"] {
+    border-radius: 0.9rem;
+    border: 1.5px solid #00CFFF;
+    font-size: 1.08rem;
+    padding: 0.7rem 1rem;
+    background: #181C2A;
+    width: 100%;
+    min-width: 180px;
+    max-width: 100%;
+    color: #fff;
+}
+#offcanvasTarea .adjuntos-upload-box .btn-success {
+    border-radius: 0.9rem;
+    font-weight: 700;
+    font-size: 1.13rem;
+    padding: 0.7rem 1.5rem;
+    margin: 0 auto;
+    width: 100%;
+    box-shadow: 0 2px 8px #00CFFF44;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    border: none;
+    transition: background 0.18s, box-shadow 0.18s;
+    display: block;
+}
+#offcanvasTarea .adjuntos-upload-box .btn-success:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px #00CFFF44;
+}
+#offcanvasTarea .adjuntos-upload-box .input-group > * {
+    margin-bottom: 0 !important;
+}
+#offcanvasTarea .adjuntos-upload-box .ayuda-archivo {
+    font-size: 0.97rem;
+    color: #A3A9B8;
+    margin-top: 0.3rem;
+    text-align: center;
+}
+#offcanvasTarea .comentarios-panel {
+    padding: 0.5rem 0.5rem 0 0.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+#offcanvasTarea .comentarios-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+#offcanvasTarea .comentarios-header .icono {
+    font-size: 2.2rem;
+    color: #00CFFF;
+    background: #232946;
+    border-radius: 50%;
+    padding: 0.5rem;
+}
+#offcanvasTarea .comentario-card {
+    background: rgba(35,41,70,0.88);
+    border-radius: 1.1rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 1.1rem 1rem 0.7rem 1rem;
+    margin-bottom: 1.1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    position: relative;
+    color: #fff;
+    border: 1.5px solid #7F9CF5;
+}
+#offcanvasTarea .comentario-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #7F9CF5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px #00CFFF44;
+}
+#offcanvasTarea .comentario-info {
+    flex: 1;
+}
+#offcanvasTarea .comentario-nombre {
+    font-weight: 700;
+    color: #00CFFF;
+    font-size: 1.08rem;
+}
+#offcanvasTarea .comentario-rol {
+    font-size: 0.97rem;
+    color: #A3A9B8;
+    margin-left: 0.5rem;
+}
+#offcanvasTarea .comentario-fecha {
+    font-size: 0.93rem;
+    color: #A3A9B8;
+    margin-left: 0.5rem;
+}
+#offcanvasTarea .comentario-badge-trello {
+    font-size: 0.93rem;
+    background: #00CFFF;
+    color: #fff;
+    border-radius: 0.7em;
+    padding: 0.2em 0.7em;
+    margin-left: 0.5rem;
+}
+#offcanvasTarea .comentario-texto {
+    margin-top: 0.3rem;
+    font-size: 1.08rem;
+    color: #fff;
+    word-break: break-word;
+}
+#offcanvasTarea .comentario-acciones {
+    position: absolute;
+    top: 0.7rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.3rem;
+}
+#offcanvasTarea .comentario-acciones .btn {
+    font-size: 1.1rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.7rem;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px #00CFFF22;
+    transition: background 0.2s, color 0.2s;
+}
+#offcanvasTarea .comentario-acciones .btn:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+}
+#offcanvasTarea .comentarios-formulario {
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.7rem;
+    align-items: flex-end;
+}
+#offcanvasTarea .comentarios-formulario .form-control {
+    font-size: 1.13rem;
+    border-radius: 0.9rem;
+    padding: 0.8rem 1.1rem;
+    min-height: 48px;
+    background: #232946;
+    color: #fff;
+    box-shadow: 0 2px 8px #23263a11;
+    border: 1.5px solid #00CFFF;
+}
+#offcanvasTarea .comentarios-formulario .btn-primary {
+    font-size: 1.13rem;
+    border-radius: 0.9rem;
+    padding: 0.8rem 1.5rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px #00CFFF33;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    border: none;
+    transition: background 0.2s, color 0.2s;
+}
+#offcanvasTarea .comentarios-formulario .btn-primary:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+}
+</style>
+<div class="tareas-modern-container">
+    <div class="tareas-modern-header">
+        <h2>Tareas</h2>
+        <div class="d-flex gap-2">
+            {% if user_rol in ['lider', 'jefe'] %}
+                <button type="button" class="btn btn-primary" id="btnSyncTrello">
+                    <i class="fab fa-trello me-2"></i>Sincronizar con Trello
+                </button>
+                <a href="{{ url_for('tareas.nueva_tarea_form') }}" class="btn btn-success"><i class="fas fa-plus me-2"></i>Nueva tarea</a>
+            {% endif %}
+        </div>
+    </div>
+    <form class="tareas-modern-filtros" id="formFiltros">
+        <input type="text" class="form-control" name="buscar" id="buscarInput" placeholder="Buscar por título...">
+        <select class="form-select" name="estado" id="estadoInput">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_progreso">En progreso</option>
+            <option value="completada">Completada</option>
+        </select>
+        <select class="form-select" name="equipo_id" id="equipoInput">
+            <option value="">Todos los equipos</option>
+            {% for equipo in equipos %}
+            <option value="{{ equipo.id }}">{{ equipo.nombre }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary"><i class="fas fa-filter me-1"></i>Filtrar</button>
+    </form>
+    <div class="tareas-modern-table-container">
+        <table class="tareas-modern-table" id="tablaTareas">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Equipo</th>
+                    <th>Asignado</th>
+                    <th>Fecha límite</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tarea in tareas %}
+                <tr>
+                    <td class="fw-semibold">{{ tarea.titulo }}</td>
+                    <td><span class="badge bg-{{ 'warning' if tarea.estado=='pendiente' else 'info' if tarea.estado=='en_progreso' else 'success' }}">{{ tarea.estado|capitalize }}</span></td>
+                    <td><span class="badge bg-{{ 'danger' if tarea.prioridad=='alta' else 'warning' if tarea.prioridad=='media' else 'success' }}">{{ tarea.prioridad|capitalize }}</span></td>
+                    <td>{{ tarea.equipo_nombre or 'Sin equipo' }}</td>
+                    <td>{{ tarea.asignado_nombre or 'Sin asignar' }}</td>
+                    <td>{{ tarea.fecha_limite or '-' }}</td>
+                    <td>
+                        {% if user_rol in ['lider', 'jefe'] %}
+                            <button class="btn btn-circular btn-info" type="button" onclick="abrirOffcanvasDetalle({{ tarea.id }})" title="Ver detalles"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-circular btn-danger" type="button" onclick="abrirToastEliminar({{ tarea.id }}, this)" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        {% endif %}
+                        <button class="btn btn-circular btn-secondary" type="button" onclick="abrirOffcanvasComentarios({{ tarea.id }})" title="Comentarios"><i class="fas fa-comments"></i></button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted">No hay tareas registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- Offcanvas Detalles/Comentarios -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasTarea" aria-labelledby="offcanvasTareaLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasTareaLabel"></h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body" id="offcanvasTareaBody">
+    <!-- Aquí se carga el contenido dinámicamente -->
+  </div>
+</div>
+<div id="toastEliminarTarea" class="toast align-items-center text-white bg-danger border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2000; min-width: 350px; max-width: 90vw; display:none;">
+  <div class="d-flex">
+    <div class="toast-body">
+      <div class="fw-bold mb-1"><i class="fas fa-trash me-2"></i>¿Seguro que deseas eliminar esta tarea?</div>
+      <div class="small">Esta acción no se puede deshacer.</div>
+    </div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="cerrarToastEliminar()" aria-label="Cerrar"></button>
+  </div>
+  <div class="d-flex justify-content-end gap-2 px-3 pb-2">
+    <button class="btn btn-secondary btn-sm" onclick="cerrarToastEliminar()">Cancelar</button>
+    <button class="btn btn-danger btn-sm" id="btnConfirmarEliminarTareaToast"><i class="fas fa-trash me-1"></i>Eliminar</button>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Refactor total de los tres botones de acciones para modales Bootstrap 5 puros
+let offcanvasTarea = null;
+let tipoOffcanvas = null;
+let tareaIdActual = null;
+let tareaAEliminar = null;
+
+function abrirOffcanvasDetalle(tareaId) {
+  tipoOffcanvas = 'detalle';
+  tareaIdActual = tareaId;
+  if (!offcanvasTarea) {
+    offcanvasTarea = new bootstrap.Offcanvas(document.getElementById('offcanvasTarea'));
+  }
+  document.getElementById('offcanvasTareaLabel').innerHTML = '<i class="fas fa-tasks me-2"></i>Detalles de la Tarea';
+  document.getElementById('offcanvasTareaBody').innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando detalles...</div>';
+  offcanvasTarea.show();
+  fetch(`/tareas/detalles/${tareaId}`).then(r=>r.json()).then(data => {
+    if (data && data.tarea) {
+      let tarea = data.tarea;
+      let html = `
+        <div class="detalle-tarea-main">
+          <div class="detalle-tarea-titulo">${tarea.titulo}</div>
+          <div class="detalle-tarea-desc">${tarea.descripcion || ''}</div>
+          <div class="detalle-tarea-info">
+            <div><span class="detalle-label">Estado:</span> <span class="badge bg-info">${tarea.estado ? tarea.estado.charAt(0).toUpperCase() + tarea.estado.slice(1) : ''}</span></div>
+            <div><span class="detalle-label">Fecha límite:</span> <span class="detalle-valor">${tarea.fecha_limite || '-'}</span></div>
+            <div><span class="detalle-label">Prioridad:</span> <span class="badge bg-warning text-dark">${tarea.prioridad ? tarea.prioridad.charAt(0).toUpperCase() + tarea.prioridad.slice(1) : ''}</span></div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="fw-semibold mb-2"><i class="fas fa-paperclip me-2"></i> Archivos adjuntos</div>
+          <div class='adjuntos-upload-box'>
+            <form id="formSubirAdjuntoModal" data-upload-url="/tareas/${tarea.id}/adjuntos" enctype="multipart/form-data">
+              <div class="input-group">
+                <input type="file" class="form-control" name="archivo" required>
+                <button class="btn btn-success" type="submit"><i class="fas fa-upload me-1"></i> Subir archivo</button>
+              </div>
+              <div class="ayuda-archivo">Formatos permitidos: PDF, Word, Excel, Imagen. Máx 10MB.</div>
+            </form>
+          </div>
+          <div id="exploradorArchivosModal" class="adjuntos-grid"></div>
+        </div>
+      `;
+      document.getElementById('offcanvasTareaBody').innerHTML = html;
+      // Cargar adjuntos
+      fetch(`/tareas/detalles/${tarea.id}`).then(r=>r.json()).then(data2 => {
+        renderAdjuntos(tarea.id, data2);
+      });
+      // Subida de archivo AJAX
+      document.getElementById('formSubirAdjuntoModal').onsubmit = function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        var uploadUrl = this.getAttribute('data-upload-url');
+        fetch(uploadUrl, {
+          method: 'POST',
+          body: formData
+        }).then(r=>r.json()).then(data => {
+          if(data.success) {
+            fetch(`/tareas/detalles/${tarea.id}`).then(r=>r.json()).then(data2 => {
+              if (data2 && data2.adjuntos) {
+                renderAdjuntos(tarea.id, data2);
+              }
+            });
+          } else {
+            mostrarToast(data.message);
+          }
+        });
+      };
+    } else {
+      document.getElementById('offcanvasTareaBody').innerHTML = '<div class="text-danger">No se pudo cargar la información de la tarea.</div>';
+    }
+  });
+}
+function abrirOffcanvasComentarios(tareaId) {
+  tipoOffcanvas = 'comentarios';
+  tareaIdActual = tareaId;
+  if (!offcanvasTarea) {
+    offcanvasTarea = new bootstrap.Offcanvas(document.getElementById('offcanvasTarea'));
+  }
+  document.getElementById('offcanvasTareaLabel').innerHTML = '<i class="fas fa-comments me-2"></i>Comentarios de la tarea';
+  document.getElementById('offcanvasTareaBody').innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando comentarios...</div>';
+  offcanvasTarea.show();
+  cargarComentariosOffcanvas();
+}
+function cargarComentariosOffcanvas() {
+  const cont = document.getElementById('offcanvasTareaBody');
+  cont.innerHTML = `<div class='comentarios-panel'>
+    <div class='comentarios-header'><span class='icono'><i class="fas fa-comments"></i></span><span class='fs-4 fw-bold'>Comentarios</span></div>
+    <div id='comentariosLista'></div>
+    <form class='comentarios-formulario' id='formNuevoComentario'>
+      <input type="text" class="form-control" id="inputComentarioOffcanvas" placeholder="Escribe un comentario..." maxlength="500" required>
+      <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i></button>
+    </form>
+  </div>`;
+  fetch(`/tareas/${tareaIdActual}/comentarios`).then(r => r.json()).then(comentarios => {
+    const lista = document.getElementById('comentariosLista');
+    if (!comentarios || comentarios.length === 0) {
+      lista.innerHTML = '<div class="text-muted text-center mt-3">Sin comentarios aún.</div>';
+      return;
+    }
+    lista.innerHTML = '';
+    comentarios.forEach(c => {
+      let avatar = `<div class='comentario-avatar'>${(c.nombre||'')[0] || '?'}</div>`;
+      let badgeTrello = c.fuente === 'trello' ? `<span class='comentario-badge-trello'>Trello</span>` : '';
+      let acciones = '';
+      if (c.puede_editar || c.puede_eliminar) {
+        acciones = `<div class='comentario-acciones'>`;
+        if (c.puede_editar) {
+          acciones += `<button class='btn btn-link text-primary btn-editar-comentario' title='Editar'><i class='fas fa-edit'></i></button>`;
+        }
+        if (c.puede_eliminar) {
+          acciones += `<button class='btn btn-link text-danger btn-eliminar-comentario' title='Eliminar'><i class='fas fa-trash'></i></button>`;
+        }
+        acciones += `</div>`;
+      }
+      lista.innerHTML += `
+        <div class='comentario-card'>
+          ${avatar}
+          <div class='comentario-info'>
+            <div><span class='comentario-nombre'>${c.nombre} ${c.apellido}</span><span class='comentario-rol'>${c.rol}</span><span class='comentario-fecha'>${new Date(c.fecha).toLocaleString()}</span>${badgeTrello}</div>
+            <div class='comentario-texto'>${c.comentario}</div>
+          </div>
+          ${acciones}
+        </div>
+      `;
+    });
+    // Acciones editar/eliminar
+    document.querySelectorAll('.btn-editar-comentario').forEach((btn, i) => {
+      btn.onclick = function() {
+        editarComentario(comentarios[i].id, comentarios[i].comentario);
+      };
+    });
+    document.querySelectorAll('.btn-eliminar-comentario').forEach((btn, i) => {
+      btn.onclick = function() {
+        fetch(`/comentarios/${comentarios[i].id}`, {method:'DELETE'}).then(r=>r.json()).then(data=>{
+          if(data.success) cargarComentariosOffcanvas();
+          else mostrarToast(data.message);
+        });
+      };
+    });
+  });
+  // Formulario para agregar comentario
+  document.getElementById('formNuevoComentario').onsubmit = function(e) {
+    e.preventDefault();
+    const input = document.getElementById('inputComentarioOffcanvas');
+    const texto = input.value.trim();
+    if (!texto) return;
+    fetch(`/tareas/${tareaIdActual}/comentarios`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({comentario: texto})
+    }).then(r=>r.json()).then(data=>{
+      if(data.success) {
+        input.value = '';
+        cargarComentariosOffcanvas();
+      } else {
+        mostrarToast(data.message);
+      }
+    });
+  };
+}
+function abrirToastEliminar(tareaId, btn) {
+  tareaAEliminar = { btn, tareaId };
+  const toast = document.getElementById('toastEliminarTarea');
+  toast.style.display = 'block';
+}
+function cerrarToastEliminar() {
+  document.getElementById('toastEliminarTarea').style.display = 'none';
+  tareaAEliminar = null;
+}
+document.getElementById('btnConfirmarEliminarTareaToast').onclick = function() {
+  const { btn, tareaId } = tareaAEliminar || {};
+  if (!btn || !tareaId) return;
+  btn.disabled = true;
+  fetch(`/tareas/eliminar/${tareaId}`, {
+    method: 'POST',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      const row = btn.closest('tr');
+      if (window.$ && $.fn.DataTable && $('#tablaTareas').hasClass('dataTable')) {
+        $('#tablaTareas').DataTable().row(row).remove().draw();
+      } else if (row) {
+        row.remove();
+      }
+      cerrarToastEliminar();
+    } else {
+      mostrarToast(data.message || 'No se pudo eliminar la tarea.');
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    mostrarToast('Error al eliminar la tarea.');
+    btn.disabled = false;
+  });
+};
+document.getElementById('tablaTareas').addEventListener('click', function(e) {
+  const btnDetalle = e.target.closest('.btn-ver-detalle');
+  if (btnDetalle) {
+    abrirOffcanvasDetalle(btnDetalle.getAttribute('data-tarea-id'));
+    return;
+  }
+  const btnComentarios = e.target.closest('.btn-comentarios');
+  if (btnComentarios) {
+    abrirOffcanvasComentarios(btnComentarios.getAttribute('data-tarea-id'));
+    return;
+  }
+  const btnEliminar = e.target.closest('.btn-eliminar-tarea');
+  if (btnEliminar) {
+    abrirToastEliminar(btnEliminar.getAttribute('data-tarea-id'), btnEliminar);
+    return;
+  }
+});
+// Sincronizar filtros personalizados con DataTables
+const formFiltros = document.getElementById('formFiltros');
+formFiltros.onsubmit = function(e) {
+  e.preventDefault();
+  const buscar = document.getElementById('buscarInput').value;
+  const estado = document.getElementById('estadoInput').value;
+  const equipo = document.getElementById('equipoInput').value;
+  tabla.search(buscar);
+  if (estado) {
+    tabla.column(1).search(estado, true, false);
+  } else {
+    tabla.column(1).search('');
+  }
+  if (equipo) {
+    tabla.column(3).search(equipo, true, false);
+  } else {
+    tabla.column(3).search('');
+  }
+  tabla.draw();
+};
+
+// Obtener variables de usuario desde el body
+const usuarioId = document.body.dataset.usuarioId;
+const usuarioRol = document.body.dataset.usuarioRol;
+
+function editarComentario(id, comentario) {
+  const nuevoComentario = prompt('Editar comentario:', comentario);
+  if (nuevoComentario === null || nuevoComentario.trim() === '') return;
+  fetch(`/comentarios/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({comentario: nuevoComentario.trim()})
+  }).then(r=>r.json()).then(data=>{
+    if(data.success) cargarComentariosOffcanvas();
+    else mostrarToast(data.message);
+  });
+}
+// Sincronizar con Trello
+const btnSync = document.getElementById('btnSyncTrello');
+if (btnSync) {
+  btnSync.onclick = function() {
+    btnSync.disabled = true;
+    btnSync.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sincronizando...';
+    fetch('/tareas/sincronizar_trello', {method: 'POST'})
+      .then(r => r.json())
+      .then(data => {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fab fa-trello me-1"></i>Sincronizar con Trello';
+        if(data.success) {
+          // Recargar solo la tabla de tareas por AJAX aquí si lo deseas
+          location.reload(); // Si quieres evitar recarga total, implementa recarga AJAX de la tabla
+        } else {
+          mostrarToast(data.message);
+        }
+      })
+      .catch(() => {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fab fa-trello me-1"></i>Sincronizar con Trello';
+        mostrarToast('Error al sincronizar con Trello.', 'danger');
+      });
+  };
+}
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${tipo} position-fixed top-0 end-0 m-3 fade show`;
+  toast.style.zIndex = 9999;
+  toast.innerText = mensaje;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+}
+
+function renderAdjuntos(tareaId, data2) {
+  let adjHtml = '';
+  // Unificar nombres (minúsculas y sin espacios)
+  const trelloNames = new Set();
+  if (data2.adjuntos_trello && data2.adjuntos_trello.length > 0) {
+    data2.adjuntos_trello.forEach(function(att) {
+      trelloNames.add(att.nombre_archivo.trim().toLowerCase());
+      let icono = '<i class="fas fa-file-alt text-secondary icono"></i>';
+      if (att.tipo_archivo && att.tipo_archivo.includes('image')) icono = '<i class="fas fa-file-image text-info icono"></i>';
+      else if (att.tipo_archivo && att.tipo_archivo.includes('pdf')) icono = '<i class="fas fa-file-pdf text-danger icono"></i>';
+      else if (att.tipo_archivo && att.tipo_archivo.includes('word')) icono = '<i class="fas fa-file-word text-primary icono"></i>';
+      else if (att.tipo_archivo && att.tipo_archivo.includes('excel')) icono = '<i class="fas fa-file-excel text-success icono"></i>';
+      adjHtml += `<div class='adjunto-card bg-white shadow-sm border border-1'>
+        <span class='badge bg-info mb-1'>Trello</span>
+        ${icono}
+        <div class='nombre' title='${att.nombre_archivo}'>${att.nombre_archivo}</div>
+        <div class='d-flex gap-2'>
+          <a href='${att.url}' class='btn btn-outline-primary btn-sm' target='_blank' title='Descargar desde Trello'><i class='fas fa-download'></i></a>
+          <button class='btn btn-outline-danger btn-sm btn-eliminar-adjunto-modal' data-id='${att.id}' data-origen='trello' title='Eliminar'><i class='fas fa-trash'></i></button>
+        </div>
+      </div>`;
+    });
+  }
+  if (data2.adjuntos && data2.adjuntos.length > 0) {
+    data2.adjuntos.forEach(function(adjunto) {
+      if (trelloNames.has(adjunto.nombre_archivo.trim().toLowerCase())) return;
+      let icono = '<i class="fas fa-file-alt text-secondary icono"></i>';
+      if (adjunto.tipo_archivo === 'image') icono = '<i class="fas fa-file-image text-info icono"></i>';
+      else if (adjunto.tipo_archivo === 'pdf') icono = '<i class="fas fa-file-pdf text-danger icono"></i>';
+      else if (adjunto.tipo_archivo === 'word') icono = '<i class="fas fa-file-word text-primary icono"></i>';
+      else if (adjunto.tipo_archivo === 'excel') icono = '<i class="fas fa-file-excel text-success icono"></i>';
+      adjHtml += `<div class='adjunto-card bg-white shadow-sm border border-1'>
+        <span class='badge bg-secondary mb-1'>Sistema</span>
+        ${icono}
+        <div class='nombre' title='${adjunto.nombre_archivo}'>${adjunto.nombre_archivo}</div>
+        <div class='d-flex gap-2'>
+          <a href='/tareas/descargar-adjunto/${adjunto.id}' class='btn btn-outline-primary btn-sm' title='Descargar'><i class='fas fa-download'></i></a>
+          <button class='btn btn-outline-danger btn-sm btn-eliminar-adjunto-modal' data-id='${adjunto.id}' data-origen='sistema' title='Eliminar'><i class='fas fa-trash'></i></button>
+        </div>
+      </div>`;
+    });
+  }
+  if (!adjHtml) {
+    adjHtml = '<div class="text-muted">No hay archivos adjuntos.</div>';
+  }
+  document.getElementById('exploradorArchivosModal').innerHTML = adjHtml;
+  asignarEventosEliminarAdjunto(tareaId);
+}
+function asignarEventosEliminarAdjunto(tareaId) {
+  document.querySelectorAll('.btn-eliminar-adjunto-modal').forEach(btnAdj => {
+    btnAdj.onclick = function() {
+      var id = this.getAttribute('data-id');
+      var origen = this.getAttribute('data-origen'); // 'trello' o 'sistema'
+      if (!id) {
+        mostrarToast('Error interno: el botón no tiene el ID del adjunto.', 'danger');
+        return;
+      }
+      fetch(`/tareas/eliminar-adjunto/${id}?origen=${origen}`, {method:'POST'})
+        .then(r=>r.json())
+        .then(data => {
+          if(data.success) {
+            fetch(`/tareas/detalles/${tareaId}`).then(r=>r.json()).then(data2 => {
+              renderAdjuntos(tareaId, data2);
+              mostrarToast('Adjunto eliminado correctamente.','success');
+            });
+          } else {
+            mostrarToast('Error al eliminar adjunto: ' + (data.message || 'Error desconocido.'), 'danger');
+          }
+        })
+        .catch(() => {
+          mostrarToast('Error de red o JS al intentar eliminar el adjunto.', 'danger');
+        });
+    };
+  });
+}
+</script>
+{% endblock %}

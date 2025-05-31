@@ -25,33 +25,60 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.min.css">
     <style>
         :root {
-            --primary: #3b3f5c;
-            --secondary: #5c7cfa;
-            --accent: #f76707;
-            --success: #51cf66;
-            --warning: #fcc419;
-            --danger: #fa5252;
-            --bg: #f4f6fb;
-            --sidebar-bg: #23263a;
-            --sidebar-active: #5c7cfa;
-            --sidebar-hover: #34375a;
-            --navbar-bg: #fff;
-            --navbar-shadow: 0 2px 8px rgba(60,60,60,0.04);
-            --text-main: #23263a;
-            --text-light: #adb5bd;
+            --primary: #181C2A;
+            --secondary: #7F9CF5;
+            --accent: #00CFFF;
+            --success: #7F9CF5;
+            --warning: #FFB347;
+            --danger: #FF61A6;
+            --bg: #101C2C;
+            --sidebar-bg: #232946;
+            --sidebar-active: #00CFFF;
+            --sidebar-hover: #2C365A;
+            --navbar-bg: #232946;
+            --navbar-shadow: 0 2px 8px rgba(0,207,255,0.08);
+            --text-main: #FFFFFF;
+            --text-light: #A3A9B8;
         }
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg);
+            background: url("{{ url_for('static', filename='img/fondo4.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
+            background-attachment: fixed;
             color: var(--text-main);
             min-height: 100vh;
             margin: 0;
             display: flex;
+            position: relative;
+        }
+        body::before, body.dark-mode::before {
+            display: none !important;
+        }
+        .main-content, .container-fluid-custom, .card, .sidebar, .navbar-top {
+            background: none !important;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        body.dark-mode .main-content, 
+        body.dark-mode .container-fluid-custom, 
+        body.dark-mode .card, 
+        body.dark-mode .sidebar, 
+        body.dark-mode .navbar-top {
+            background: none !important;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .main-content, .sidebar, .navbar-top, .notif-panel-float {
+            position: relative;
+            z-index: 1;
         }
         .sidebar {
-            width: 240px;
-            background: var(--sidebar-bg);
+            background: #23263a !important;
             color: #fff;
+            box-shadow: 0 4px 24px #23263a33;
+            border-top-right-radius: 1.7rem;
+            border-bottom-right-radius: 1.7rem;
+            width: 240px;
             min-height: 100vh;
             position: fixed;
             left: 0; top: 0; bottom: 0;
@@ -60,7 +87,14 @@
             flex-direction: column;
             transition: width 0.2s;
         }
-        .sidebar.collapsed { width: 70px; }
+        .sidebar.collapsed {
+            width: 70px !important;
+            border-radius: 1rem;
+            transition: width 0.3s cubic-bezier(.68,-0.55,.27,1.55), border-radius 0.3s;
+            overflow-x: hidden;
+            min-width: 70px;
+            max-width: 70px;
+        }
         .sidebar .sidebar-header {
             font-size: 1.4rem;
             font-weight: 700;
@@ -127,7 +161,7 @@
         }
         .main-content.collapsed { margin-left: 70px; }
         .navbar-top {
-            background: var(--navbar-bg);
+            background: rgba(255,255,255,0.18);
             box-shadow: var(--navbar-shadow);
             height: 64px;
             display: flex;
@@ -193,7 +227,7 @@
             border-color: #444 !important;
         }
         body.dark-mode .navbar-top {
-            background: #23272b !important;
+            background: rgba(35,38,58,0.13);
             color: #f1f1f1 !important;
         }
         body.dark-mode .navbar-title { color: #f1f1f1 !important; }
@@ -381,61 +415,651 @@
             70% { box-shadow: 0 0 0 10px rgba(79,140,255,0); }
             100% { box-shadow: 0 0 0 0 rgba(79,140,255,0); }
         }
+        /* --- Rediseño moderno del panel de notificaciones --- */
+        .notif-panel-float {
+            position: absolute;
+            top: 60px;
+            right: 32px;
+            min-width: 390px;
+            max-width: 440px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 60%, #e3f0ff 100%);
+            border-radius: 22px;
+            box-shadow: 0 12px 32px #3b3f5c33, 0 2px 8px #5c7cfa22;
+            border: 1.5px solid #b6d0f7;
+            color: #23263a;
+            z-index: 1200;
+            animation: notifSlideIn 0.35s cubic-bezier(.68,-0.55,.27,1.55);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        @keyframes notifSlideIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .notif-panel-float::before {
+            content: '';
+            position: absolute;
+            top: -18px; right: 38px;
+            border-width: 0 14px 18px 14px;
+            border-style: solid;
+            border-color: transparent transparent #e3f0ff transparent;
+            filter: drop-shadow(0 2px 4px #5c7cfa22);
+        }
+        body.dark-mode .notif-panel-float {
+            background: linear-gradient(135deg, #23263a 60%, #3b3f5c 100%);
+            color: #f1f1f1;
+            border: 1.5px solid #34375a;
+        }
+        body.dark-mode .notif-panel-float::before {
+            border-color: transparent transparent #23263a transparent;
+        }
+        .notif-panel-header {
+            background: linear-gradient(90deg, #5c7cfa 0%, #51cf66 100%);
+            color: #fff;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+            box-shadow: 0 2px 12px #23263a22;
+            font-size: 1.18rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding-bottom: 0.6rem;
+        }
+        .notif-panel-body {
+            background: transparent;
+            border-radius: 0 0 18px 18px;
+            max-height: 370px;
+            overflow-y: auto;
+            padding-bottom: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: #5c7cfa #e3f0ff;
+        }
+        .notif-panel-body::-webkit-scrollbar {
+            width: 8px;
+            background: #e3f0ff;
+            border-radius: 8px;
+        }
+        .notif-panel-body::-webkit-scrollbar-thumb {
+            background: #b6d0f7;
+            border-radius: 8px;
+        }
+        .notif-group-title {
+            font-weight: 700;
+            color: #5c7cfa;
+            margin-top: 1.1rem;
+            margin-bottom: 0.3rem;
+            font-size: 1.09rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding-left: 2px;
+        }
+        body.dark-mode .notif-group-title { color: #51cf66; }
+        .notif-list { margin-bottom: 0.5rem; }
+        .notif-item-modern {
+            background: linear-gradient(90deg, #fff 80%, #e3f0ff 100%);
+            border-radius: 16px;
+            box-shadow: 0 2px 8px #5c7cfa11;
+            margin-bottom: 0.7rem;
+            padding: 1rem 1.2rem 1rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1.1rem;
+            transition: background 0.2s, box-shadow 0.2s;
+            position: relative;
+            border-left: 5px solid #5c7cfa;
+        }
+        .notif-item-modern.unread {
+            background: linear-gradient(90deg, #e7f3ff 80%, #cbe6ff 100%);
+            box-shadow: 0 4px 16px #5c7cfa22;
+            border-left: 5px solid #51cf66;
+        }
+        body.dark-mode .notif-item-modern {
+            background: linear-gradient(90deg, #23263a 80%, #3b3f5c 100%);
+            color: #f1f1f1;
+        }
+        body.dark-mode .notif-item-modern.unread {
+            background: linear-gradient(90deg, #2b3a4a 80%, #3b3f5c 100%);
+            border-left: 5px solid #51cf66;
+        }
+        .notif-icon-modern {
+            font-size: 2.1rem;
+            color: #5c7cfa;
+            background: #e3f0ff;
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px #5c7cfa11;
+            flex-shrink: 0;
+        }
+        .notif-icon-tarea { color: #5c7cfa; background: #e3f0ff; }
+        .notif-icon-comentario { color: #51cf66; background: #e6f9ee; }
+        .notif-icon-archivo { color: #fcc419; background: #fffbe6; }
+        .notif-icon-sistema { color: #fa5252; background: #ffe3e3; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-title { font-weight: 700; font-size: 1.08rem; color: #23263a; margin-bottom: 2px; }
+        body.dark-mode .notif-title { color: #fff; }
+        .notif-msg { font-size: 1.01rem; color: #495057; word-break: break-word; }
+        body.dark-mode .notif-msg { color: #e9ecef; }
+        .notif-date { font-size: 0.93rem; color: #adb5bd; margin-top: 2px; }
+        body.dark-mode .notif-date { color: #b6d0f7; }
+        .notif-actions { display: flex; flex-direction: column; gap: 0.4rem; margin-left: 0.5rem; }
+        .notif-actions button {
+            background: none;
+            border: none;
+            color: #5c7cfa;
+            font-size: 1.25rem;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s, transform 0.18s;
+            padding: 6px;
+        }
+        .notif-actions button:hover {
+            background: #e3f0ff;
+            color: #23263a;
+            transform: scale(1.15);
+        }
+        body.dark-mode .notif-actions button:hover {
+            background: #34375a;
+            color: #fff;
+        }
+        .notif-panel-footer {
+            background: #f8fbff;
+            border-bottom-left-radius: 22px;
+            border-bottom-right-radius: 22px;
+            box-shadow: 0 -2px 8px #23263a11;
+            padding-top: 0.7rem;
+            border-top: 1.5px solid #e3f0ff;
+        }
+        body.dark-mode .notif-panel-footer { background: #23263a; border-top: 1.5px solid #34375a; }
+        .notif-markall, .notif-delall {
+            font-weight: 700;
+            font-size: 1.08rem;
+            border-radius: 10px;
+            padding: 0.3rem 1.1rem;
+            transition: background 0.2s, color 0.2s, box-shadow 0.18s;
+        }
+        .notif-markall:hover {
+            background: #e6f9ee;
+            color: #51cf66;
+            box-shadow: 0 2px 8px #51cf6622;
+        }
+        .notif-delall:hover {
+            background: #ffe3e3;
+            color: #fa5252;
+            box-shadow: 0 2px 8px #fa525222;
+        }
+        .notif-empty {
+            color: #adb5bd;
+            font-size: 1.13rem;
+            margin: 2.2rem 0 1.2rem 0;
+            letter-spacing: 0.2px;
+            font-weight: 500;
+        }
+        @media (max-width: 600px) {
+            .notif-panel-float { min-width: 98vw; max-width: 99vw; right: 1vw; }
+        }
+        .navbar-gradient {
+            background: linear-gradient(90deg, #1e90ff 0%, #43e97b 100%);
+            box-shadow: 0 4px 24px #23263a11, 0 1.5px 8px #5c7cfa22;
+            border-bottom-left-radius: 1.2rem;
+            border-bottom-right-radius: 1.2rem;
+            min-height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 1001;
+        }
+        .text-shadow-light { text-shadow: 0 2px 8px #23263a22, 0 1px 2px #fff8; }
+        .theme-toggle-btn-pro {
+            background: rgba(255,255,255,0.92);
+            border: none;
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            box-shadow: 0 2px 8px #5c7cfa22;
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s, background 0.3s, transform 0.18s;
+            position: relative;
+            overflow: hidden;
+        }
+        .theme-toggle-btn-pro:active { transform: scale(0.92) rotate(-10deg); }
+        .theme-toggle-btn-pro:hover { box-shadow: 0 4px 16px #5c7cfa33; background: #e3f0ff; }
+        .theme-icon-flip-pro i { transition: transform 0.4s cubic-bezier(.68,-0.55,.27,1.55); }
+        .theme-toggle-btn-pro.active .theme-icon-flip-pro i { transform: rotate(180deg); }
+        .theme-badge-pro { width: 12px; height: 12px; background: #51cf66; border:2px solid #fff; box-shadow:0 1px 4px #51cf6622; }
+        .notif-btn-pro {
+            background: rgba(255,255,255,0.92);
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            box-shadow: 0 2px 8px #5c7cfa22;
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s, background 0.3s, transform 0.18s;
+            position: relative;
+            overflow: hidden;
+        }
+        .notif-btn-pro:active { transform: scale(0.92) rotate(-10deg); }
+        .notif-btn-pro:hover { box-shadow: 0 4px 16px #fa525233; background: #e3f0ff; }
+        .notif-badge-pro { font-size: 1em; box-shadow: 0 2px 8px #fa525222; animation: notifPulse 1.2s infinite alternate; }
+        @keyframes notifPulse { 0% { transform: scale(1); } 100% { transform: scale(1.18); } }
+        .glass-btn { backdrop-filter: blur(8px); background: rgba(255,255,255,0.85) !important; }
+        .avatar-btn-pro {
+            border-radius: 50%;
+            width: 54px; height: 54px;
+            box-shadow: 0 4px 16px #43e97b33, 0 2px 8px #5c7cfa22;
+            border: 3px solid #43e97b;
+            transition: box-shadow 0.2s, border 0.3s, transform 0.18s;
+            overflow: hidden;
+            background: rgba(255,255,255,0.92);
+        }
+        .avatar-btn-pro:active { transform: scale(0.92) rotate(-10deg); }
+        .avatar-btn-pro:hover { box-shadow: 0 8px 32px #43e97b33; border: 3px solid #1e90ff; }
+        .avatar-gradient-pro {
+            background: linear-gradient(135deg, #43e97b 0%, #1e90ff 100%);
+            color: #fff;
+            border-radius: 50%;
+            width: 100%; height: 100%;
+            font-size: 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.3s, color 0.3s, border 0.3s, box-shadow 0.3s;
+        }
+        .avatar-btn-pro:hover .avatar-tooltip-pro { display: block !important; }
+        .avatar-tooltip-pro { pointer-events: none; }
+        @media (max-width: 900px) {
+            .navbar-title { font-size: 1.1rem !important; }
+            .navbar-gradient { padding: 0.5rem 0.5rem; border-radius: 0.7rem; }
+        }
+        @media (max-width: 600px) {
+            .navbar-title { font-size: 0.98rem !important; }
+            .navbar-gradient { padding: 0.2rem 0.2rem; border-radius: 0.4rem; }
+        }
+        .glass-dropdown {
+            background: rgba(255,255,255,0.95) !important;
+            backdrop-filter: blur(12px) !important;
+            border-radius: 1.2em !important;
+            box-shadow: 0 8px 32px #5c7cfa22, 0 2px 8px #43e97b22 !important;
+            border: none !important;
+            padding: 0.5em 0;
+        }
+        .avatar-dropdown-item {
+            border-radius: 0.8em;
+            transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+            font-weight: 500;
+        }
+        .avatar-dropdown-item:hover, .avatar-dropdown-item:focus {
+            background: linear-gradient(90deg, #e3f0ff 0%, #f7f9fb 100%) !important;
+            color: #1e90ff !important;
+            box-shadow: 0 2px 8px #5c7cfa22;
+        }
+        .dropdown-divider { margin: 0.2em 0 !important; }
+        .sidebar-glass {
+            background: rgba(24,28,42,0.97) !important;
+            backdrop-filter: blur(14px) saturate(1.2);
+            box-shadow: 0 8px 32px #23294677, 0 2px 8px #00CFFF33 !important;
+            border-top-right-radius: 2.2rem !important;
+            border-bottom-right-radius: 2.2rem !important;
+            border-left: 3.5px solid #00CFFF44;
+            min-height: 100vh;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .sidebar-header-glass {
+            background: none !important;
+            border-bottom: 1.5px solid #00CFFF33 !important;
+            margin-bottom: 0.7rem;
+            padding: 2.2rem 1.5rem 1.1rem 1.5rem;
+            box-shadow: none;
+        }
+        .sidebar-avatar-wrapper {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #23272b 60%, #43484e 100%);
+            box-shadow: 0 4px 16px #23263a33, 0 1px 4px #ffd70022;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 3px solid #ffd700;
+        }
+        .sidebar-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+        .sidebar-avatar-initials {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #5c7cfa 0%, #ffd700 100%);
+            border-radius: 50%;
+            letter-spacing: 1px;
+        }
+        .sidebar-user-name {
+            font-size: 1.08rem;
+            color: #fff;
+            margin-top: 0.5rem;
+            margin-bottom: 0.1rem;
+            text-shadow: 0 2px 8px #23263a22;
+        }
+        .sidebar-user-role-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #ffd700 0%, #ffb347 100%);
+            color: #23272b;
+            font-weight: 600;
+            border-radius: 1.2em;
+            padding: 0.3em 1em;
+            font-size: 1em;
+            box-shadow: 0 1px 8px #23263a11;
+            letter-spacing: 0.5px;
+            margin-top: 0.2em;
+        }
+        .sidebar-logo-glass {
+            font-size: 2.3rem;
+            color: #43e97b;
+            filter: drop-shadow(0 2px 12px #43e97b66);
+            transition: color 0.2s, filter 0.2s;
+        }
+        .sidebar-title-glass {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 1.2px;
+            text-shadow: 0 2px 12px #5c7cfa22;
+        }
+        .sidebar-toggle-glass { display: none !important; }
+        .sidebar-menu-glass {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-top: 1.2rem;
+        }
+        .sidebar-link-glass {
+            color: #e3e6ea;
+            font-weight: 600;
+            padding: 1.15rem 1.8rem;
+            border-radius: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            font-size: 1.18rem;
+            transition: background 0.22s, color 0.22s, box-shadow 0.22s, transform 0.18s;
+            position: relative;
+            letter-spacing: 0.6px;
+            box-shadow: 0 1px 8px #23263a11;
+            margin-bottom: 0.1rem;
+            border: 1.5px solid transparent;
+        }
+        .sidebar-link-glass i {
+            font-size: 1.55em;
+            background: linear-gradient(135deg, #5c7cfa 0%, #868e96 100%);
+            color: #fff;
+            border-radius: 50%;
+            padding: 0.45em;
+            box-shadow: 0 2px 12px #5c7cfa33, 0 1px 4px #868e9622;
+            transition: background 0.22s, color 0.22s, box-shadow 0.22s, transform 0.18s;
+            filter: drop-shadow(0 2px 8px #23263a22);
+        }
+        .sidebar-link-glass.active, .sidebar-link-glass:focus {
+            background: linear-gradient(90deg, #ffb347 0%, #ffd700 100%);
+            color: #23272b;
+            box-shadow: 0 6px 24px #ffd70044, 0 2px 8px #ffb34722;
+            transform: scale(1.06);
+            border: 1.5px solid #ffd700;
+        }
+        .sidebar-link-glass.active i, .sidebar-link-glass:focus i {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            color: #23272b;
+            transform: scale(1.22) rotate(-10deg);
+            box-shadow: 0 4px 16px #ffd70044;
+        }
+        .sidebar-link-glass:hover {
+            background: linear-gradient(90deg, #ffd700 0%, #ffb347 100%);
+            color: #23272b;
+            box-shadow: 0 4px 16px #ffd70033, 0 2px 8px #ffb34722;
+            transform: scale(1.04);
+            border: 1.5px solid #ffd700;
+        }
+        .sidebar-link-glass:hover i {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            color: #23272b;
+            transform: scale(1.15) rotate(8deg);
+            box-shadow: 0 4px 16px #ffd70033;
+            animation: sidebarBounce 0.5s;
+        }
+        @keyframes sidebarBounce {
+            0% { transform: scale(1.1) translateY(0); }
+            30% { transform: scale(1.18) translateY(-6px); }
+            60% { transform: scale(1.1) translateY(2px); }
+            100% { transform: scale(1.15) translateY(0); }
+        }
+        .sidebar-link-glass span {
+            transition: color 0.2s, font-weight 0.2s, text-shadow 0.2s;
+            text-shadow: 0 1px 4px #23263a22;
+        }
+        .sidebar-link-glass.active span, .sidebar-link-glass:focus span {
+            color: #fff;
+            font-weight: 800;
+            text-shadow: 0 2px 8px #43e97b33;
+        }
+        .sidebar-link-glass:hover span {
+            color: #fff;
+            font-weight: 700;
+            text-shadow: 0 2px 8px #ffd70022;
+        }
+        .sidebar-menu-glass::after {
+            content: '';
+            display: block;
+            height: 1.5rem;
+            border-bottom: 1.5px solid #e0f7fa44;
+            margin: 1.2rem 1.5rem 0.5rem 1.5rem;
+            border-radius: 1em;
+        }
+        @media (max-width: 900px) {
+            .sidebar-glass { width: 70px !important; border-radius: 1rem !important; }
+            .sidebar-header-glass span, .sidebar-title-glass, .sidebar-link-glass span { display: none !important; }
+            .sidebar-link-glass { justify-content: center; padding: 1.1rem 0.5rem !important; }
+        }
+        @media (max-width: 600px) {
+            .sidebar-glass { border-radius: 0.7rem !important; }
+            .sidebar-header-glass { font-size: 1.1rem !important; padding: 1.2rem 0.7rem 0.7rem 0.7rem !important; }
+        }
+        @keyframes avatarGlow {
+            0% { box-shadow:0 0 32px 8px #00CFFF33; }
+            100% { box-shadow:0 0 48px 16px #7F9CF544; }
+        }
+        .sidebar-avatar-img, .sidebar-avatar-initials {
+            transition: box-shadow 0.3s, border 0.3s, transform 0.18s;
+        }
+        .sidebar-avatar-img:hover, .sidebar-avatar-initials:hover {
+            box-shadow: 0 0 48px 16px #00CFFF77, 0 2px 8px #7F9CF544;
+            border-color: #7F9CF5;
+            transform: scale(1.07) rotate(-2deg);
+        }
+        .sidebar-user-role-badge {
+            background: linear-gradient(90deg,#00CFFF 0%,#7F9CF5 100%) !important;
+            color: #232946 !important;
+            font-weight: 800;
+            border-radius: 1.2em;
+            font-size: 1.01em;
+            box-shadow: 0 1px 4px #23294611;
+            letter-spacing: 0.5px;
+            margin-top: 0.2em;
+        }
+        .sidebar-link-glass {
+            background: rgba(24,28,42,0.82) !important;
+            color: #fff !important;
+            border-radius: 1.2em !important;
+            font-size: 1.13em !important;
+            font-weight: 700 !important;
+            margin: 0.18em 0.5em;
+            padding: 0.95em 1.5em !important;
+            display: flex;
+            align-items: center;
+            gap: 1.1em;
+            box-shadow: 0 2px 12px #5c7cfa33, 0 1px 4px #868e9622;
+            transition: background 0.22s, color 0.22s, box-shadow 0.22s, transform 0.18s;
+            filter: drop-shadow(0 2px 8px #23263a22);
+        }
+        .sidebar-link-glass i {
+            font-size: 1.45em !important;
+            background: linear-gradient(135deg,#232946 0%,#7F9CF5 100%);
+            border-radius: 0.7em;
+            padding: 0.45em;
+            box-shadow: 0 2px 12px #5c7cfa33, 0 1px 4px #868e9622;
+            transition: background 0.22s, color 0.22s, box-shadow 0.22s, transform 0.18s;
+            filter: drop-shadow(0 2px 8px #23263a22);
+        }
+        .sidebar-link-glass.active, .sidebar-link-glass:focus {
+            background: linear-gradient(90deg,#00CFFF 0%,#7F9CF5 100%) !important;
+            color: #232946 !important;
+            box-shadow: 0 6px 24px #00CFFF44, 0 2px 8px #7F9CF522 !important;
+            transform: scale(1.06);
+            border: 2.5px solid #00CFFF;
+        }
+        .sidebar-link-glass.active i, .sidebar-link-glass:focus i {
+            background: linear-gradient(135deg,#00CFFF 0%,#7F9CF5 100%);
+            color: #232946 !important;
+            transform: scale(1.22) rotate(-10deg);
+            box-shadow: 0 4px 16px #00CFFF44;
+        }
+        .sidebar-link-glass:hover {
+            background: linear-gradient(90deg,#7F9CF5 0%,#00CFFF 100%) !important;
+            color: #232946 !important;
+            box-shadow: 0 4px 16px #7F9CF544, 0 2px 8px #00CFFF22 !important;
+            transform: scale(1.04);
+            border: 2.5px solid #7F9CF5;
+        }
+        .sidebar-link-glass:hover i {
+            background: linear-gradient(135deg,#7F9CF5 0%,#00CFFF 100%);
+            color: #232946 !important;
+            transform: scale(1.15) rotate(8deg);
+            box-shadow: 0 4px 16px #7F9CF544;
+            animation: sidebarBounce 0.5s;
+        }
+        @keyframes sidebarBounce {
+            0% { transform: scale(1.1) translateY(0); }
+            30% { transform: scale(1.18) translateY(-6px); }
+            60% { transform: scale(1.1) translateY(2px); }
+            100% { transform: scale(1.15) translateY(0); }
+        }
+        .sidebar-link-glass span {
+            transition: color 0.2s, font-weight 0.2s, text-shadow 0.2s;
+            text-shadow: 0 1px 4px #23263a22;
+        }
+        .sidebar-link-glass.active span, .sidebar-link-glass:focus span {
+            color: #232946 !important;
+            font-weight: 800;
+            text-shadow: 0 2px 8px #00CFFF33;
+        }
+        .sidebar-link-glass:hover span {
+            color: #232946 !important;
+            font-weight: 700;
+            text-shadow: 0 2px 8px #7F9CF522;
+        }
+        .sidebar-menu-glass::after {
+            content: '';
+            display: block;
+            height: 1.5rem;
+            border-bottom: 1.5px solid #e0f7fa44;
+            margin: 1.2rem 1.5rem 0.5rem 1.5rem;
+            border-radius: 1em;
+        }
+        @media (max-width: 900px) {
+            .sidebar-glass { width: 70px !important; border-radius: 1rem !important; }
+            .sidebar-header-glass span, .sidebar-title-glass, .sidebar-link-glass span { display: none !important; }
+            .sidebar-link-glass { justify-content: center; padding: 1.1rem 0.5rem !important; }
+        }
+        @media (max-width: 600px) {
+            .sidebar-glass { border-radius: 0.7rem !important; }
+            .sidebar-header-glass { font-size: 1.1rem !important; padding: 1.2rem 0.7rem 0.7rem 0.7rem !important; }
+        }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <i class="fas fa-layer-group"></i><span>Sistema</span>
-            <button class="sidebar-toggle" id="sidebarToggle" title="Colapsar menú"><i class="fas fa-bars"></i></button>
+    <nav class="sidebar sidebar-glass shadow-lg" id="sidebar" style="background:rgba(24,28,42,0.97);backdrop-filter:blur(14px) saturate(1.2);box-shadow:0 8px 32px #23294677,0 2px 8px #00CFFF33;border-top-right-radius:2.2rem;border-bottom-right-radius:2.2rem;">
+        <div class="sidebar-header sidebar-header-glass d-flex flex-column align-items-center gap-2 py-4" style="border-bottom:1.5px solid #00CFFF33;">
+            <div class="sidebar-avatar-wrapper mb-2" style="position:relative;">
+                {% if current_user.avatar_url %}
+                    <img src="{{ url_for('static', filename=current_user.avatar_url) }}" alt="Avatar" class="sidebar-avatar-img" style="width:70px;height:70px;border-radius:50%;border:3px solid #00CFFF;box-shadow:0 0 24px #00CFFF55,0 2px 8px #7F9CF544;object-fit:cover;">
+                {% else %}
+                    <div class="sidebar-avatar-initials d-flex align-items-center justify-content-center" style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#232946 0%,#7F9CF5 100%);color:#fff;font-size:2.1rem;font-weight:900;border:3px solid #00CFFF;box-shadow:0 0 24px #00CFFF55,0 2px 8px #7F9CF544;">{{ (current_user.nombre[0] ~ current_user.apellido[0])|upper }}</div>
+                {% endif %}
+                <span class="sidebar-avatar-glow" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;box-shadow:0 0 32px 8px #00CFFF33;pointer-events:none;animation:avatarGlow 2.5s infinite alternate;"></span>
+            </div>
+            <div class="sidebar-user-name fw-bold text-white text-center" style="font-size:1.15rem;letter-spacing:0.5px;">{{ current_user.nombre }} {{ current_user.apellido }}</div>
+            <span class="sidebar-user-role-badge d-inline-block px-3 py-1 mt-1" style="background:linear-gradient(90deg,#00CFFF 0%,#7F9CF5 100%);color:#232946;font-weight:800;border-radius:1.2em;font-size:1.01em;box-shadow:0 1px 4px #23294611;letter-spacing:0.5px;">{{ current_user.rol|capitalize }}</span>
         </div>
-        <div class="nav flex-column">
-            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}"><i class="fas fa-home"></i><span>Inicio</span></a>
-            <a class="nav-link {% if request.endpoint == 'estadisticas' %}active{% endif %}" href="{{ url_for('estadisticas') }}"><i class="fas fa-chart-bar"></i><span>Estadísticas</span></a>
-            <a class="nav-link {% if request.endpoint == 'tareas.listar_tareas' %}active{% endif %}" href="{{ url_for('tareas.listar_tareas') }}"><i class="fas fa-tasks"></i><span>Tareas</span></a>
-            <a class="nav-link {% if request.endpoint == 'equipos' %}active{% endif %}" href="{{ url_for('equipos') }}"><i class="fas fa-users"></i><span>Equipos</span></a>
-            <a class="nav-link {% if request.endpoint == 'competencias' %}active{% endif %}" href="{{ url_for('competencias') }}"><i class="fas fa-lightbulb"></i><span>Competencias</span></a>
-            <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
+        <div class="nav flex-column sidebar-menu-glass" style="margin-top:1.2rem;">
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}"><i class="fas fa-home fa-lg"></i><span>Inicio</span></a>
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'estadisticas' %}active{% endif %}" href="{{ url_for('estadisticas') }}"><i class="fas fa-chart-bar fa-lg"></i><span>Usuarios</span></a>
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'tareas.listar_tareas' %}active{% endif %}" href="{{ url_for('tareas.listar_tareas') }}"><i class="fas fa-tasks fa-lg"></i><span>Tareas</span></a>
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'equipos' %}active{% endif %}" href="{{ url_for('equipos') }}"><i class="fas fa-users fa-lg"></i><span>Equipos</span></a>
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'trello_panel' %}active{% endif %}" href="{{ url_for('trello_panel') }}"><i class="fab fa-trello fa-lg"></i><span>Trello</span></a>
             {% if current_user.rol == 'jefe' %}
-            <a class="nav-link {% if request.endpoint == 'jefes' %}active{% endif %}" href="{{ url_for('jefes') }}"><i class="fas fa-user-shield"></i><span>Jefes</span></a>
+            <a class="nav-link sidebar-link-glass {% if request.endpoint == 'jefes' %}active{% endif %}" href="{{ url_for('jefes') }}"><i class="fas fa-user-shield fa-lg"></i><span>Jefes</span></a>
             {% endif %}
         </div>
     </nav>
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <div class="navbar-top d-flex justify-content-between align-items-center px-3 py-2 bg-white shadow-sm" style="min-height:56px;">
-            <span class="navbar-title fw-bold fs-5"><i class="fas fa-users"></i> Sistema de Empleados</span>
+        <div class="navbar-top d-flex justify-content-between align-items-center px-3 py-2 navbar-gradient shadow-lg animate__animated animate__fadeInDown" style="min-height:64px;">
             <div class="d-flex align-items-center gap-3">
-                <!-- Modo Oscuro/Claro -->
-                <button id="themeToggle" class="btn theme-toggle-btn-modern" title="Cambiar a modo oscuro">
-                    <span class="theme-icon-flip">
-                        <i id="themeIconMoon" class="fas fa-moon fa-lg"></i>
-                        <i id="themeIconSun" class="fas fa-sun fa-lg"></i>
+                <img src="{{ url_for('static', filename='img/Reflexo_Perulogo.png') }}" alt="Logo" style="height:38px;width:38px;border-radius:12px;box-shadow:0 2px 8px #5c7cfa22;object-fit:contain;background:#fff;">
+                <span class="navbar-title fw-bold fs-4 text-white text-shadow-light">Sistema de Gestión de Tareas</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Modo Oscuro/Claro Mejorado -->
+                <button id="themeToggle" class="btn theme-toggle-btn-modern theme-toggle-btn-pro position-relative" title="Cambiar a modo oscuro">
+                    <span class="theme-icon-flip-pro">
+                        <i id="themeIconMoon" class="fas fa-moon fa-2x"></i>
+                        <i id="themeIconSun" class="fas fa-sun fa-2x"></i>
                     </span>
+                    <span class="theme-badge-pro position-absolute top-0 end-0 translate-middle badge rounded-pill bg-gradient-info"></span>
                 </button>
-                <!-- Notificaciones -->
+                <!-- Notificaciones Mejoradas -->
                 <div class="dropdown">
-                    <button class="btn notif-btn-modern position-relative" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notificaciones">
-                        <i class="fas fa-bell fa-lg"></i>
-                        <span class="notif-badge-modern position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount">3</span>
+                    <button class="btn notif-btn-modern notif-btn-pro position-relative glass-btn" id="notifFloatBtn" aria-label="Abrir notificaciones" title="Notificaciones">
+                        <i class="fas fa-bell fa-2x"></i>
+                        <span class="notif-badge-modern notif-badge-pulse notif-badge-pro position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow" id="notifCountModern">0</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end notif-dropdown-modern animate__animated animate__fadeIn" aria-labelledby="notifDropdown" style="min-width: 320px; max-height: 350px; overflow-y: auto;">
-                        <li class="dropdown-header fw-bold">Notificaciones recientes</li>
-                        <li><span class="dropdown-item-text text-muted">No tienes notificaciones nuevas.</span></li>
-                    </ul>
+                    <!-- Panel flotante de notificaciones (rediseñado) -->
+                    <div class="notif-panel-float" id="notifPanelFloat" tabindex="-1" aria-label="Panel de notificaciones" style="display:none;min-width:340px;max-width:400px;">
+                        <div class="notif-panel-header d-flex justify-content-between align-items-center px-3 py-2">
+                            <span class="fw-bold fs-6"><i class="fas fa-bell me-2"></i>Notificaciones</span>
+                        </div>
+                        <div class="notif-panel-body px-3 py-2" id="notifPanelBodySimple" style="max-height:340px;overflow-y:auto;">
+                            <div class="notif-empty text-center text-muted mt-3" id="notifEmptyModern">No tienes notificaciones nuevas.</div>
+                        </div>
+                        <div class="notif-panel-footer d-flex justify-content-between align-items-center px-3 py-2">
+                            <button class="btn btn-link text-decoration-none notif-markall" id="notifMarkAll"><i class="fas fa-check-double me-1"></i>Marcar todas como leídas</button>
+                            <button class="btn btn-link text-danger text-decoration-none notif-delall" id="notifDelAll"><i class="fas fa-trash me-1"></i>Eliminar todas</button>
+                        </div>
+                    </div>
                 </div>
-                <!-- Avatar Usuario -->
+                <!-- Avatar Usuario Mejorado -->
                 <div class="dropdown">
-                    <button class="btn avatar-btn-modern p-0" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="width: 44px; height: 44px;">
-                        <span class="avatar-gradient d-flex align-items-center justify-content-center w-100 h-100 fw-bold" style="font-size:1.2rem;">
+                    <button class="btn avatar-btn-modern avatar-btn-pro p-0 glass-btn position-relative" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="width: 54px; height: 54px;">
+                        <span class="avatar-gradient-pro d-flex align-items-center justify-content-center w-100 h-100 fw-bold" style="font-size:1.5rem; border: 3px solid #43e97b; box-shadow: 0 4px 16px #43e97b33, 0 2px 8px #5c7cfa22; transition: border 0.3s, box-shadow 0.3s;">
                             {{ (current_user.nombre[0] ~ current_user.apellido[0])|upper if current_user.is_authenticated else '' }}
                         </span>
+                        <span class="avatar-tooltip-pro animate__animated animate__fadeIn" style="display:none;position:absolute;top:110%;left:50%;transform:translateX(-50%);background:#fff;color:#23263a;padding:0.4em 1em;border-radius:1em;box-shadow:0 2px 8px #5c7cfa22;font-size:1em;white-space:nowrap;z-index:10;">{{ current_user.nombre }} {{ current_user.apellido }}</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow animate__animated animate__fadeIn" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('perfil') }}"><i class="fas fa-user-circle me-2"></i>Mi perfil</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow glass-dropdown animate__animated animate__fadeInDown" aria-labelledby="userDropdown" style="min-width:200px; border-radius:1.2em; background:rgba(24,28,42,0.97); backdrop-filter:blur(14px); box-shadow:0 8px 32px #00CFFF22, 0 2px 8px #43e97b22; border:none;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-3 fs-5 avatar-dropdown-item" href="{{ url_for('perfil') }}" style="color:#fff;">
+                                <i class="fas fa-user-circle" style="color:#00CFFF;font-size:1.5em;"></i> <span>Mi perfil</span>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1" style="border-color:#00CFFF33;"></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-3 fs-5 avatar-dropdown-item text-danger" href="{{ url_for('logout') }}" style="color:#ff4d6d;">
+                                <i class="fas fa-sign-out-alt"></i> <span>Cerrar sesión</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -451,40 +1075,12 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            {% block contenido %}{% endblock %}
+            <div id="main-content">{% block content %}{% endblock %}</div>
         </div>
     </div>
-    <!-- Chat flotante y botón siempre presentes -->
-    <div id="chat-flotante" class="chat-flotante-modern" style="position:fixed;bottom:30px;right:30px;z-index:9999;width:440px;max-width:98vw;display:none;box-shadow:0 8px 32px #23263a33;border-radius:22px;overflow:hidden;">
-        <div class="chat-header-modern d-flex align-items-center justify-content-between px-4 py-3" style="background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff;box-shadow:0 2px 12px #23263a22;">
-            <div class="d-flex align-items-center gap-3">
-                <i class="fas fa-comments fa-xl" style="filter:drop-shadow(0 2px 6px #23263a44);"></i>
-                <span class="fw-bold fs-5" style="letter-spacing:0.5px;">Chat institucional</span>
-            </div>
-            <button type="button" class="btn btn-light btn-sm rounded-circle p-1" title="Cerrar" style="color:var(--primary);box-shadow:0 2px 8px #23263a22;"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="chat-tabs-modern d-flex border-bottom position-relative" style="background:#f4f6fb;">
-            <button class="chat-tab-btn flex-fill py-2 border-0 bg-transparent fw-semibold position-relative" id="tab-global" style="outline:none;transition:color .2s;">Global</button>
-            <button class="chat-tab-btn flex-fill py-2 border-0 bg-transparent fw-semibold position-relative" id="tab-equipo" style="outline:none;transition:color .2s;">Equipo</button>
-            <span class="chat-tab-underline" style="position:absolute;bottom:0;left:0;width:50%;height:3px;background:var(--primary);border-radius:2px;transition:left .3s cubic-bezier(.68,-0.55,.27,1.55);z-index:2;"></span>
-        </div>
-        <div class="chat-body-modern" style="background:rgba(244,246,251,0.95);height:380px;overflow-y:auto;padding:22px 18px 16px 18px;backdrop-filter:blur(2px);">
-            <div id="chat-mensajes-global" class="chat-mensajes-modern" style="display:block;"></div>
-            <div id="chat-mensajes-equipo" class="chat-mensajes-modern" style="display:none;"></div>
-        </div>
-        <form id="form-chat-global" class="chat-form-modern d-flex align-items-center gap-2 px-4 py-3 border-top" style="background:rgba(255,255,255,0.98);backdrop-filter:blur(2px);">
-            <input type="text" id="input-chat-global" class="form-control rounded-pill px-3 shadow-sm" maxlength="200" placeholder="Escribe un mensaje..." style="background:rgba(244,246,251,0.95);border:none;">
-            <button type="submit" id="btn-enviar-chat-global" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm chat-btn-animado" style="width:46px;height:46px;transition:box-shadow .2s;" disabled><i class="fas fa-paper-plane"></i></button>
-        </form>
-        <form id="form-chat-equipo" class="chat-form-modern d-flex align-items-center gap-2 px-4 py-3 border-top" style="background:rgba(255,255,255,0.98);backdrop-filter:blur(2px);display:none;">
-            <input type="text" id="input-chat-equipo" class="form-control rounded-pill px-3 shadow-sm" maxlength="200" placeholder="Mensaje a tu equipo..." style="background:rgba(244,246,251,0.95);border:none;">
-            <button type="submit" id="btn-enviar-chat-equipo" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center shadow-sm chat-btn-animado" style="width:46px;height:46px;transition:box-shadow .2s;" disabled><i class="fas fa-paper-plane"></i></button>
-        </form>
-    </div>
-    <button id="abrir-chat" class="btn btn-primary rounded-circle position-fixed" style="bottom:30px;right:30px;z-index:9998;width:60px;height:60px;display:block;"><i class="fas fa-comments fa-lg"></i><span id="badge-nuevo-chat" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">!</span></button>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery (requerido por DataTables y scripts personalizados) -->
+    <!-- jQuery (requerido por DataTables) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Tema oscuro -->
     <script src="{{ url_for('static', filename='dark_mode.js') }}"></script>
@@ -498,20 +1094,6 @@
     <!-- Chart.js JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     {% block scripts %}{% endblock %}
-    <script>
-        // Sidebar toggle
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('collapsed');
-        });
-    </script>
-    <!-- Contenedor de toasts -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-        <div id="toastContainer"></div>
-    </div>
     <script>
     // Función para mostrar toasts de Bootstrap
     function showToast(message, type = 'success') {
@@ -534,288 +1116,115 @@
     // Ejemplo: showToast('¡Cambios guardados con éxito!', 'success');
     </script>
 
-    <!-- Modal obligatorio de habilidades y fortalezas -->
-    {% if current_user.is_authenticated and current_user.rol in ['lider', 'practicante'] %}
-    <div class="modal fade" id="modalHabilidadesFortalezas" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalHabilidadesFortalezasLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modalHabilidadesFortalezasLabel">
-                        <i class="fas fa-exclamation-circle me-2"></i>Completar Perfil
-                    </h5>
-                </div>
-                <form id="formHabilidadesFortalezas" method="POST" action="{{ url_for('editar_competencias', id=current_user.id) }}">
-                    <div class="modal-body">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Por favor, complete sus habilidades y fortalezas para continuar.
-                        </div>
-                        <div class="mb-3">
-                            <label for="modal_habilidades" class="form-label">Habilidades</label>
-                            <input type="text" class="form-control" id="modal_habilidades" name="habilidades" placeholder="Ej: Python, SQL, HTML" data-multiple data-list="{{ habilidades_globales|map(attribute='nombre')|join(',') }}" required>
-                            <div class="form-text">Escribe y selecciona habilidades existentes o nuevas. Separa con coma.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="modal_fortalezas" class="form-label">Fortalezas</label>
-                            <input type="text" class="form-control" id="modal_fortalezas" name="fortalezas" placeholder="Ej: Trabajo en equipo, Liderazgo" data-multiple data-list="{{ fortalezas_globales|map(attribute='nombre')|join(',') }}" required>
-                            <div class="form-text">Agrega fortalezas personales o selecciona sugeridas. Separa con coma.</div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                    </div>
-                </form>
+    <!-- Modal Crear Equipo Trello -->
+    <div class="modal fade" id="modalCrearEquipoTrello" tabindex="-1" aria-labelledby="modalCrearEquipoTrelloLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="formCrearEquipoTrello" method="POST" action="{{ url_for('agregar_equipo') }}">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="modalCrearEquipoTrelloLabel"><i class="fab fa-trello me-2"></i>Crear Equipo en Trello</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="nombreEquipoTrello" class="form-label">Nombre del Equipo</label>
+                <input type="text" class="form-control" id="nombreEquipoTrello" name="nombre" required maxlength="100" placeholder="Ej: Equipo Trello UX">
+              </div>
+              <div class="mb-3">
+                <label for="descripcionEquipoTrello" class="form-label">Descripción</label>
+                <textarea class="form-control" id="descripcionEquipoTrello" name="descripcion" rows="2" maxlength="255" placeholder="Descripción breve del equipo (opcional)"></textarea>
+              </div>
+              <div class="alert alert-info small"><i class="fab fa-trello me-1"></i> Al crear el equipo, se generará automáticamente un tablero en Trello vinculado.</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary"><i class="fab fa-trello me-2"></i>Crear Equipo Trello</button>
+            </div>
+          </form>
         </div>
+      </div>
     </div>
-    {% endif %}
-
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-    // Inicializar Awesomplete para campos múltiples en el modal
-    function initAwesompleteMulti(id) {
-        var input = document.getElementById(id);
-        if (!input) return;
-        var list = input.getAttribute('data-list').split(',');
-        new Awesomplete(input, {
-            list: list,
-            minChars: 1,
-            autoFirst: true,
-            filter: function(text, input) {
-                var terms = input.split(',');
-                return Awesomplete.FILTER_CONTAINS(text, terms[terms.length-1].trim());
-            },
-            item: function(text, input) {
-                var terms = input.split(',');
-                return Awesomplete.ITEM(text, terms[terms.length-1].trim());
-            },
-            replace: function(text) {
-                var before = this.input.value.split(',');
-                before.pop();
-                this.input.value = before.join(', ') + (before.length ? ', ' : '') + text + ', ';
-            }
-        });
-    }
     document.addEventListener('DOMContentLoaded', function() {
-        initAwesompleteMulti('modal_habilidades');
-        initAwesompleteMulti('modal_fortalezas');
-        // Validación visual en tiempo real
-        ['modal_habilidades','modal_fortalezas'].forEach(function(id) {
-            var input = document.getElementById(id);
-            if (input) {
-                input.addEventListener('input', function() {
-                    if (input.value.trim().length > 0) {
-                        input.classList.remove('is-invalid');
-                        input.classList.add('is-valid');
-                    } else {
-                        input.classList.remove('is-valid');
-                        input.classList.add('is-invalid');
-                    }
+        // --- Panel flotante de notificaciones simplificado ---
+        const notifBtn = document.getElementById('notifFloatBtn');
+        const notifPanel = document.getElementById('notifPanelFloat');
+        const notifCountModern = document.getElementById('notifCountModern');
+        const notifMarkAll = document.getElementById('notifMarkAll');
+        const notifDelAll = document.getElementById('notifDelAll');
+        const notifPanelBody = document.getElementById('notifPanelBodySimple');
+        const notifEmptyModern = document.getElementById('notifEmptyModern');
+        let notificaciones = [];
+        function renderNotificacionesSimple() {
+            notifPanelBody.innerHTML = '';
+            let totalNoLeidas = 0;
+            if (notificaciones.length === 0) {
+                notifPanelBody.appendChild(notifEmptyModern);
+                notifEmptyModern.style.display = '';
+            } else {
+                notifEmptyModern.style.display = 'none';
+                notificaciones.forEach(n => {
+                    const icon = n.tipo==='tarea' ? 'fa-tasks notif-icon-tarea' : n.tipo==='comentario' ? 'fa-comments notif-icon-comentario' : n.tipo==='archivo' ? 'fa-paperclip notif-icon-archivo' : 'fa-cog notif-icon-sistema';
+                    const titulo = n.titulo || (n.tipo==='tarea' ? 'Nueva tarea' : n.tipo==='comentario' ? 'Nuevo comentario' : n.tipo==='archivo' ? 'Archivo adjunto' : 'Notificación');
+                    const li = document.createElement('div');
+                    li.className = 'notif-item-modern'+(n.leido?'':' unread');
+                    li.innerHTML = `<span class="notif-icon-modern ${icon}"><i class="fas ${icon}"></i></span>
+                      <div class="notif-content">
+                        <div class="notif-title">${titulo}</div>
+                        <div class="notif-msg">${n.mensaje}</div>
+                        <div class="notif-date">${n.fecha}</div>
+                      </div>
+                      <div class="notif-actions">
+                        <button class="notif-leer" title="Marcar como leída"><i class="fas fa-check"></i></button>
+                        <button class="notif-eliminar" title="Eliminar"><i class="fas fa-trash"></i></button>
+                      </div>`;
+                    li.querySelector('.notif-leer').onclick = async ()=>{
+                        await fetch(`/api/notificaciones/${n.id}/leer`, {method:'POST'});
+                        n.leido = true; renderNotificacionesSimple(); };
+                    li.querySelector('.notif-eliminar').onclick = async ()=>{
+                        await fetch(`/api/notificaciones/${n.id}`, {method:'DELETE'});
+                        notificaciones = notificaciones.filter(x=>x.id!==n.id); renderNotificacionesSimple(); };
+                    if(!n.leido) totalNoLeidas++;
+                    notifPanelBody.appendChild(li);
                 });
             }
+            notifCountModern.textContent = totalNoLeidas;
+            notifCountModern.style.display = totalNoLeidas>0?'inline-block':'none';
+        }
+        notifBtn.onclick = function(){
+            notifPanel.style.display = notifPanel.style.display==='none'?'block':'none';
+            if(notifPanel.style.display==='block') notifPanel.focus();
+        };
+        document.addEventListener('click', function(e){
+            if(notifPanel.style.display==='block' && !notifPanel.contains(e.target) && e.target!==notifBtn) notifPanel.style.display='none';
         });
-    });
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Modo oscuro/claro con flip
-        const themeToggle = document.getElementById('themeToggle');
-        let darkMode = localStorage.getItem('darkMode') === 'true';
-        function setTheme(dark) {
-            document.body.classList.toggle('dark-mode', dark);
-            themeToggle.classList.toggle('dark', dark);
-            localStorage.setItem('darkMode', dark);
-        }
-        setTheme(darkMode);
-        themeToggle.addEventListener('click', () => {
-            darkMode = !darkMode;
-            setTheme(darkMode);
-        });
-        // Simulación de animación de badge de notificaciones
-        setTimeout(() => {
-            const badge = document.getElementById('notifCount');
-            if (badge) {
-                badge.classList.add('animate__bounceIn');
-                setTimeout(() => badge.classList.remove('animate__bounceIn'), 1200);
+        notifPanel.onkeydown = function(e){ if(e.key==='Escape') notifPanel.style.display='none'; };
+        notifMarkAll.onclick = async function(){
+            for(const n of notificaciones.filter(n=>!n.leido)){
+                await fetch(`/api/notificaciones/${n.id}/leer`, {method:'POST'}); n.leido=true;
             }
-        }, 1000);
+            renderNotificacionesSimple();
+        };
+        notifDelAll.onclick = async function(){
+            for(const n of notificaciones){ await fetch(`/api/notificaciones/${n.id}`, {method:'DELETE'}); }
+            notificaciones=[]; renderNotificacionesSimple();
+        };
+        // --- Cargar y escuchar notificaciones ---
+        async function cargarNotificacionesSimple(){
+            const res = await fetch('/api/notificaciones');
+            notificaciones = await res.json();
+            renderNotificacionesSimple();
+        }
+        const socket = io();
+        socket.on(`notificacion_${window.currentUserId}`, data => {
+            notificaciones.unshift(data); renderNotificacionesSimple(); showToast(data.mensaje, data.tipo||'info'); });
+        socket.on(`notificacion_leida_${window.currentUserId}`, data => {
+            notificaciones = notificaciones.map(n => n.id==data.id ? {...n, leido:true} : n); renderNotificacionesSimple(); });
+        socket.on(`notificacion_eliminada_${window.currentUserId}`, data => {
+            notificaciones = notificaciones.filter(n => n.id!=data.id); renderNotificacionesSimple(); });
+        document.addEventListener('DOMContentLoaded', cargarNotificacionesSimple);
     });
-    </script>
-    <!-- Awesomplete JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const chatFlotante = document.getElementById('chat-flotante');
-        const abrirChat = document.getElementById('abrir-chat');
-        if (chatFlotante && abrirChat) {
-            abrirChat.onclick = () => {
-                chatFlotante.style.display = 'block';
-                abrirChat.style.display = 'none';
-            };
-            const btnCerrar = chatFlotante.querySelector('.btn-light');
-            if (btnCerrar) btnCerrar.onclick = () => {
-                chatFlotante.style.display = 'none';
-                abrirChat.style.display = 'block';
-            };
-        }
-    });
-    </script>
-    <style>
-    .chat-flotante-modern { box-shadow: 0 8px 32px #23263a33; border-radius: 22px; overflow: hidden; }
-    .chat-header-modern { background: linear-gradient(90deg,var(--primary),var(--secondary)); color: #fff; border-top-left-radius: 22px; border-top-right-radius: 22px; box-shadow: 0 2px 12px #23263a22; }
-    .chat-tabs-modern { background: #f4f6fb; position: relative; }
-    .chat-tab-btn.active { color: var(--primary); background: #fff; }
-    .chat-tab-btn:not(.active) { color: var(--primary); background: #f4f6fb; }
-    .chat-tab-underline { left: 0; }
-    .chat-tab-btn.active ~ .chat-tab-underline { left: 50%; }
-    .chat-body-modern { background: rgba(244,246,251,0.95); height: 380px; overflow-y: auto; padding: 22px 18px 16px 18px; backdrop-filter: blur(2px); }
-    .chat-mensajes-modern { min-height: 100px; }
-    .chat-burbuja-modern { max-width: 75%; padding: 13px 20px; border-radius: 20px; margin-bottom: 12px; font-size: 1.08rem; word-break: break-word; box-shadow: 0 2px 12px #23263a18; position: relative; animation: chatFadeIn .5s cubic-bezier(.68,-0.55,.27,1.55); backdrop-filter: blur(1.5px); }
-    .chat-burbuja-propio { background: linear-gradient(90deg,var(--primary),var(--secondary)); color: #fff; margin-left: auto; border-bottom-right-radius: 8px; box-shadow: 0 2px 12px #5c7cfa33; }
-    .chat-burbuja-otro { background: rgba(255,255,255,0.85); color: #23263a; margin-right: auto; border-bottom-left-radius: 8px; border: 1.5px solid #e9ecef; }
-    .chat-hora { font-size: 0.82em; color: #adb5bd; position: absolute; right: 18px; bottom: 4px; }
-    .chat-hora-otro { left: 18px; right: auto; }
-    .chat-form-modern { background: rgba(255,255,255,0.98); border-bottom-left-radius: 22px; border-bottom-right-radius: 22px; box-shadow: 0 -2px 8px #23263a11; }
-    .chat-form-modern input:focus { box-shadow: 0 0 0 2px var(--primary)22; border: none; }
-    .chat-btn-animado:hover { box-shadow: 0 4px 16px #5c7cfa44, 0 0 8px #5c7cfa88; transform: scale(1.08); }
-    .chat-btn-animado:active { transform: scale(0.95); }
-    .chat-body-modern::-webkit-scrollbar { width: 8px; background: #e9ecef; border-radius: 8px; }
-    .chat-body-modern::-webkit-scrollbar-thumb { background: #cfd8dc; border-radius: 8px; }
-    @keyframes chatFadeIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    @media (max-width: 600px) { .chat-flotante-modern { width: 99vw !important; right: 0.5vw !important; } }
-    </style>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // --- Pestañas modernas ---
-        const tabGlobal = document.getElementById('tab-global');
-        const tabEquipo = document.getElementById('tab-equipo');
-        const mensajesGlobal = document.getElementById('chat-mensajes-global');
-        const mensajesEquipo = document.getElementById('chat-mensajes-equipo');
-        const formGlobal = document.getElementById('form-chat-global');
-        const formEquipo = document.getElementById('form-chat-equipo');
-        const inputGlobal = document.getElementById('input-chat-global');
-        const inputEquipo = document.getElementById('input-chat-equipo');
-        const tabUnderline = document.querySelector('.chat-tab-underline');
-        function moverUnderline(tab) {
-            if (!tabUnderline) return;
-            if (tab === 'global') {
-                tabUnderline.style.left = '0';
-            } else {
-                tabUnderline.style.left = '50%';
-            }
-        }
-        if (tabGlobal && tabEquipo && mensajesGlobal && mensajesEquipo && formGlobal && formEquipo) {
-            tabGlobal.classList.add('active');
-            tabEquipo.classList.remove('active');
-            moverUnderline('global');
-            tabGlobal.onclick = function() {
-                tabGlobal.classList.add('active');
-                tabEquipo.classList.remove('active');
-                mensajesGlobal.style.display = 'block';
-                mensajesEquipo.style.display = 'none';
-                formGlobal.style.display = 'flex';
-                formEquipo.style.display = 'none';
-                moverUnderline('global');
-                setTimeout(() => { inputGlobal && inputGlobal.focus(); }, 100);
-            };
-            tabEquipo.onclick = function() {
-                tabEquipo.classList.add('active');
-                tabGlobal.classList.remove('active');
-                mensajesGlobal.style.display = 'none';
-                mensajesEquipo.style.display = 'block';
-                formGlobal.style.display = 'none';
-                formEquipo.style.display = 'flex';
-                moverUnderline('equipo');
-                setTimeout(() => { inputEquipo && inputEquipo.focus(); }, 100);
-            };
-        }
-        // --- Burbujas modernas ---
-        function crearBurbuja(data, propio, color) {
-            const hora = data.hora ? `<span class='chat-hora${propio ? '' : ' chat-hora-otro'}'>${data.hora}</span>` : '';
-            return `<div class='chat-burbuja-modern ${propio ? 'chat-burbuja-propio' : 'chat-burbuja-otro'} position-relative'>
-                <span class='fw-semibold small'>${data.usuario}</span><br>
-                <span>${data.mensaje}</span>
-                ${hora}
-            </div>`;
-        }
-        // --- Scroll automático ---
-        function scrollChatAbajoGlobal() { if (mensajesGlobal) mensajesGlobal.scrollTop = mensajesGlobal.scrollHeight; }
-        function scrollChatAbajoEquipo() { if (mensajesEquipo) mensajesEquipo.scrollTop = mensajesEquipo.scrollHeight; }
-        // --- Mostrar mensajes ---
-        function mostrarMensajeGlobal(data) {
-            if (!mensajesGlobal) return;
-            mensajesGlobal.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, ''));
-            scrollChatAbajoGlobal();
-            if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
-        }
-        function mostrarMensajeEquipo(data) {
-            if (!mensajesEquipo) return;
-            mensajesEquipo.insertAdjacentHTML('beforeend', crearBurbuja(data, data.usuario === usuarioActual, ''));
-            scrollChatAbajoEquipo();
-            if (!chatAbierto && badgeNuevoChat) badgeNuevoChat.style.display = 'inline-block';
-        }
-        // --- Botón abrir/cerrar chat ---
-        const chatFlotante = document.getElementById('chat-flotante');
-        const abrirChat = document.getElementById('abrir-chat');
-        if (chatFlotante && abrirChat) {
-            abrirChat.onclick = () => {
-                chatFlotante.style.display = 'block';
-                abrirChat.style.display = 'none';
-                setTimeout(() => { inputGlobal && inputGlobal.focus(); }, 200);
-            };
-            const btnCerrar = chatFlotante.querySelector('.btn-light');
-            if (btnCerrar) btnCerrar.onclick = () => {
-                chatFlotante.style.display = 'none';
-                abrirChat.style.display = 'block';
-            };
-        }
-        // --- SocketIO y envío de mensajes ---
-        if (typeof io !== 'undefined' && formGlobal && inputGlobal && btnEnviarChatGlobal) {
-            const socket = io();
-            socket.on('mensaje', mostrarMensajeGlobal);
-            socket.on('mensaje_equipo', mostrarMensajeEquipo);
-            socket.on('usuario_conectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha conectado.', hora:data.hora}));
-            socket.on('usuario_desconectado', data => mostrarMensajeGlobal({usuario:'Sistema', mensaje:'Un usuario se ha desconectado.', hora:data.hora}));
-            // Enviar mensaje global
-            formGlobal.onsubmit = function(e) {
-                e.preventDefault();
-                const mensaje = inputGlobal.value.trim();
-                if (mensaje.length === 0 || mensaje.length > 200) return;
-                btnEnviarChatGlobal.disabled = true;
-                socket.emit('mensaje', { usuario: usuarioActual, mensaje });
-                inputGlobal.value = '';
-                setTimeout(() => btnEnviarChatGlobal.disabled = false, 300);
-            };
-            inputGlobal.oninput = function() {
-                btnEnviarChatGlobal.disabled = inputGlobal.value.trim().length === 0 || inputGlobal.value.length > 200;
-            };
-            // Enviar mensaje equipo
-            if (formEquipo && inputEquipo && btnEnviarChatEquipo) {
-                formEquipo.onsubmit = function(e) {
-                    e.preventDefault();
-                    const mensaje = inputEquipo.value.trim();
-                    if (mensaje.length === 0 || mensaje.length > 200) return;
-                    btnEnviarChatEquipo.disabled = true;
-                    socket.emit('mensaje_equipo', { usuario: usuarioActual, mensaje, equipo_id: equipoId });
-                    inputEquipo.value = '';
-                    setTimeout(() => btnEnviarChatEquipo.disabled = false, 300);
-                };
-                inputEquipo.oninput = function() {
-                    btnEnviarChatEquipo.disabled = inputEquipo.value.trim().length === 0 || inputEquipo.value.length > 200;
-                };
-            }
-        }
-    });
-    </script>
-    <script>
-    // Fix de accesibilidad: al cerrar un modal, quita el foco de cualquier input/botón dentro del modal
-    // para evitar el warning de aria-hidden y mejorar la experiencia con lectores de pantalla
-    if (window.bootstrap) {
-        document.addEventListener('hidden.bs.modal', function (event) {
-            if (document.activeElement && event.target.contains(document.activeElement)) {
-                document.activeElement.blur();
-            }
-        });
-    }
     </script>
 </body>
 </html>

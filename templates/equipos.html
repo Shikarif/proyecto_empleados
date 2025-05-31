@@ -1,149 +1,653 @@
 {% extends "base.html" %}
 
-{% block contenido %}
-<div class="container-fluid">
-    <!-- Skeleton loader para equipos -->
-    <div id="equiposSkeleton" class="row g-4">
-        {% for i in range(3) %}
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="skeleton-loader" style="height: 24px; width: 70%; margin-bottom: 1rem;"></div>
-                    <div class="skeleton-loader" style="height: 16px; width: 50%; margin-bottom: 0.5rem;"></div>
-                    <div class="skeleton-loader" style="height: 16px; width: 40%;"></div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
+{% block content %}
+<div class="container py-5">
+    <div class="equipos-header-bar">
+        <div class="equipos-titulo"><i class="fas fa-users"></i> Equipos</div>
+        <button type="button" class="equipos-btn crear"><i class="fas fa-plus"></i> Crear Equipo</button>
+        {% if current_user.rol == 'jefe' %}
+        <form method="POST" action="{{ url_for('sincronizar_equipos_trello') }}" class="d-inline">
+            <button type="submit" class="equipos-btn sync"><i class="fab fa-trello"></i> Sincronizar equipos con Trello</button>
+        </form>
+        <form method="POST" action="{{ url_for('normalizar_listas_trello') }}" class="d-inline">
+            <button type="submit" class="equipos-btn norm"><i class="fas fa-list-alt"></i> Normalizar listas Trello</button>
+        </form>
+        {% endif %}
     </div>
-
-    <!-- Contenido real de equipos -->
-    <div id="equiposContent" class="row g-4" style="display: none;">
+    <div class="equipos-grid">
         {% for equipo in equipos %}
-        <div class="col-md-4">
-            <div class="card h-100 animate-on-scroll equipo-card" data-equipo-id="{{ equipo.id }}" style="cursor:pointer;">
-                <div class="card-body">
-                    <h5 class="card-title d-flex align-items-center gap-2">
-                        {{ equipo.nombre }}
-                        {% if equipo.tiene_lider %}
-                            <span class="ms-2" title="Equipo con líder"><i class="fas fa-user-tie text-success"></i></span>
-                        {% else %}
-                            <span class="ms-2" title="Equipo sin líder"><i class="fas fa-user-slash text-warning"></i></span>
-                        {% endif %}
-                        {% if equipo.total_miembros == 0 %}
-                            <span class="ms-2" title="Equipo sin miembros"><i class="fas fa-exclamation-circle text-danger"></i></span>
-                        {% endif %}
-                    </h5>
-                    <p class="card-text">
-                        <small class="text-muted">
-                            <i class="fas fa-users"></i> {{ equipo.total_miembros }} miembros
-                        </small>
-                    </p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        {# <a href="{{ url_for('ver_equipo', id=equipo.id) }}" class="btn btn-primary btn-sm">Ver Detalles</a> #}
-                        <div class="btn-group">
-                            {# <a href="{{ url_for('editar_equipo', id=equipo.id) }}" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-edit"></i>
-                            </a> #}
-                            <button onclick="eliminarEquipo({{ equipo.id }})" class="btn btn-outline-danger btn-sm">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
+        <div>
+            <div class="equipo-card-modern animate__animated animate__fadeInUp animate__delay-{{ loop.index }}s">
+                <div class="banda-miembros">
+                    <i class="fas fa-users me-1"></i> {{ equipo.total_miembros }} miembros
                 </div>
+                <div class="equipo-nombre">{{ equipo.nombre }}</div>
+                {% if current_user.rol == 'jefe' %}
+                <div class="d-flex justify-content-center gap-2 mb-2">
+                    <a href="#" class="btn btn-outline-warning btn-sm btn-editar-equipo" data-equipo-id="{{ equipo.id }}"><i class="fas fa-edit"></i> Editar</a>
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-eliminar-equipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-trash"></i> Eliminar</button>
+                </div>
+                {% endif %}
+                <a href="#" class="btn btn-primary btn-sm w-100 mb-2 btn-gestionar-miembros" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}">
+                    <i class="fas fa-users me-1"></i> Gestionar miembros
+                </a>
+                {% if current_user.rol == 'jefe' or current_user.equipo_id == equipo.id %}
+                    {% if equipo.idBoard %}
+                        <a href="https://trello.com/b/{{ equipo.idBoard }}" target="_blank" class="btn btn-lg acceso-equipo-btn-modern w-100 shadow-sm animate__animated animate__fadeIn animate__delay-1s">
+                            <i class="fas fa-sign-in-alt me-2"></i> Acceder
+                        </a>
+                    {% else %}
+                        <a href="#" class="btn btn-lg btn-secondary w-100 shadow-sm acceso-equipo-btn-modern animate__animated animate__fadeIn animate__delay-1s" disabled>
+                            <i class="fas fa-ban me-2"></i> Sin tablero Trello
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="#" class="btn btn-lg btn-secondary w-100 shadow-sm acceso-equipo-btn-modern animate__animated animate__fadeIn animate__delay-1s" disabled>
+                        <i class="fas fa-ban me-2"></i> No permitido
+                    </a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
 
-<!-- Modal Integrantes del Equipo -->
-<div class="modal fade" id="modalIntegrantesEquipo" tabindex="-1" aria-labelledby="modalIntegrantesEquipoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="modalIntegrantesEquipoLabel"><i class="fas fa-users me-2"></i>Integrantes del Equipo: <span id="nombreEquipoModal"></span></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div id="integrantesEquipoContent">
-          <!-- Aquí se cargan los integrantes por JS -->
-        </div>
-      </div>
+<!-- Panel flotante para crear equipo -->
+<div id="panelCrearEquipo" class="toast align-items-center bg-white border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2100; min-width: 420px; max-width: 95vw; display:none; background:rgba(255,255,255,0.85);backdrop-filter:blur(6px);border-radius:1.5rem;">
+  <div class="d-flex flex-column p-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold fs-4 text-dark"><i class="fas fa-plus me-2 text-success"></i>Crear Nuevo Equipo</div>
+      <button type="button" class="btn-close btn-close-dark ms-2" onclick="cerrarPanelCrearEquipo()" aria-label="Cerrar"></button>
     </div>
+    <form id="formPanelCrearEquipo" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label fw-semibold text-dark">Nombre del Equipo</label>
+        <input type="text" class="form-control form-control-lg" name="nombre" id="inputNombreEquipoPanel" placeholder="Ej: Equipo Alpha" maxlength="100" required style="font-size:1.18rem;">
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary btn-lg px-4" onclick="cerrarPanelCrearEquipo()"><i class="fas fa-times me-1"></i>Cancelar</button>
+        <button type="submit" class="btn btn-success btn-lg px-4"><i class="fas fa-save me-1"></i>Guardar</button>
+      </div>
+    </form>
   </div>
 </div>
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Simular carga de datos
-    setTimeout(() => {
-        // Ocultar skeleton loader
-        document.getElementById('equiposSkeleton').style.display = 'none';
-        // Mostrar contenido real
-        document.getElementById('equiposContent').style.display = 'flex';
-        
-        // Mostrar mensaje flash de éxito
-        showToast('Equipos cargados con éxito', 'success');
-    }, 1500);
+<!-- Offcanvas para gestionar miembros -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasGestionarMiembros" aria-labelledby="offcanvasGestionarMiembrosLabel" style="width: 540px; background: none; border: none;">
+  <div class="offcanvas-header" style="border-bottom: 1px solid #7F9CF5; background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%); background-size: 200% 200%; animation: gradientMove 6s ease-in-out infinite alternate; border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; color: #fff; text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;">
+    <h2 class="offcanvas-title" id="offcanvasGestionarMiembrosLabel" style="font-size:2.2rem;font-weight:900;color:#00CFFF;letter-spacing:1.2px;">
+      <i class="fas fa-user-cog"></i> Gestionar miembros
+    </h2>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body" id="offcanvasGestionarMiembrosBody" style="background: rgba(24,28,42,0.92); color: #fff; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; box-shadow: 0 2px 8px #23263a22; padding: 2rem 1.5rem 1.5rem 1.5rem;">
+    <!-- El contenido se carga dinámicamente -->
+    <div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando...</div>
+  </div>
+</div>
 
-    // Mostrar modal de integrantes al hacer click en una card
-    document.querySelectorAll('.equipo-card').forEach(card => {
-        card.addEventListener('click', function(e) {
-            if (e.target.closest('button')) return; // No abrir modal si se hace click en el botón de eliminar
-            const equipoId = this.getAttribute('data-equipo-id');
-            const equipoNombre = this.querySelector('.card-title').textContent.trim();
-            document.getElementById('nombreEquipoModal').textContent = equipoNombre;
-            // Petición AJAX para obtener integrantes
-            fetch(`/equipos/integrantes/${equipoId}`)
-                .then(res => res.json())
-                .then(data => {
-                    let html = '';
-                    if (data.integrantes.length > 0) {
-                        html += '<ul class="list-group">';
-                        data.integrantes.forEach(integrante => {
-                            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-user me-2"></i>${integrante.nombre} ${integrante.apellido} <span class="badge bg-secondary ms-2">${integrante.rol}</span></span>
-                                <span class="text-muted small">${integrante.correo}</span>
-                            </li>`;
-                        });
-                        html += '</ul>';
-                    } else {
-                        html = '<div class="alert alert-info">Este equipo no tiene integrantes.</div>';
-                    }
-                    document.getElementById('integrantesEquipoContent').innerHTML = html;
-                    new bootstrap.Modal(document.getElementById('modalIntegrantesEquipo')).show();
-                });
+<!-- Panel flotante para editar equipo -->
+<div id="panelEditarEquipo" class="toast align-items-center bg-white border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2200; min-width: 240px; max-width: 340px; background:rgba(255,255,255,0.98);backdrop-filter:blur(10px);border-radius:1.1rem; display:none; box-shadow: 0 6px 32px #23294633, 0 2px 8px #00CFFF22;">
+  <div class="d-flex flex-column p-2" id="panelEditarEquipoContent" style="gap:0.3rem;">
+    <!-- El contenido se carga dinámicamente -->
+  </div>
+</div>
+
+<!-- Panel flotante para eliminar equipo -->
+<div id="panelEliminarEquipo" class="toast align-items-center bg-white border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2300; min-width: 240px; max-width: 340px; background:rgba(255,255,255,0.98);backdrop-filter:blur(10px);border-radius:1.1rem; display:none; box-shadow: 0 6px 32px #fa525233, 0 2px 8px #fa525222;">
+  <div class="d-flex flex-column p-2" id="panelEliminarEquipoContent" style="gap:0.3rem;">
+    <!-- El contenido se carga dinámicamente -->
+  </div>
+</div>
+
+<script>
+// Mostrar panel crear equipo
+function abrirPanelCrearEquipo() {
+  document.getElementById('panelCrearEquipo').style.display = 'block';
+  setTimeout(()=>{
+    document.getElementById('inputNombreEquipoPanel').focus();
+  }, 200);
+}
+function cerrarPanelCrearEquipo() {
+  document.getElementById('panelCrearEquipo').style.display = 'none';
+  document.getElementById('formPanelCrearEquipo').reset();
+}
+document.getElementById('formPanelCrearEquipo').onsubmit = function(e) {
+  e.preventDefault();
+  const nombre = document.getElementById('inputNombreEquipoPanel').value.trim();
+  if (!nombre) return;
+  fetch('/equipos/nuevo', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'nombre=' + encodeURIComponent(nombre)
+  })
+  .then(r=>r.ok ? location.reload() : alert('Error al crear equipo'));
+};
+// Reemplazar el botón Crear Equipo para que abra el panel
+setTimeout(()=>{
+  const btnCrear = document.querySelector('.equipos-btn.crear');
+  if(btnCrear){
+    btnCrear.setAttribute('type','button');
+    btnCrear.onclick = abrirPanelCrearEquipo;
+  }
+}, 500);
+
+// Panel lateral para gestionar miembros
+let offcanvasMiembros = null;
+function abrirOffcanvasGestionarMiembros(equipoId, equipoNombre) {
+  if (!offcanvasMiembros) {
+    offcanvasMiembros = new bootstrap.Offcanvas(document.getElementById('offcanvasGestionarMiembros'));
+  }
+  document.getElementById('offcanvasGestionarMiembrosLabel').innerHTML = `<i class='fas fa-user-cog'></i> Gestionar miembros de <span style='color:#00CFFF;'>${equipoNombre}</span>`;
+  document.getElementById('offcanvasGestionarMiembrosBody').innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando...</div>';
+  offcanvasMiembros.show();
+  fetch(`/trello/miembros/${equipoId}`)
+    .then(r => r.text())
+    .then(html => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const form = tempDiv.querySelector('form');
+      if (form) {
+        const volverBtn = form.querySelector('a.btn-secondary');
+        if (volverBtn) {
+          volverBtn.setAttribute('href', '/equipos');
+        }
+        document.getElementById('offcanvasGestionarMiembrosBody').innerHTML = '';
+        document.getElementById('offcanvasGestionarMiembrosBody').appendChild(form);
+        form.onsubmit = function(e) {
+          e.preventDefault();
+          const formData = new FormData(form);
+          fetch(form.action, {
+            method: form.method,
+            body: formData
+          })
+          .then(r => r.text())
+          .then(respHtml => {
+            abrirOffcanvasGestionarMiembros(equipoId, equipoNombre);
+          });
+        };
+        form.querySelectorAll('button[type="submit"][title="Quitar del equipo"]').forEach(btn => {
+          btn.onclick = function(e) {
+            e.preventDefault();
+            btn.closest('form').onsubmit();
+          };
         });
+      } else {
+        document.getElementById('offcanvasGestionarMiembrosBody').innerHTML = '<div class="text-danger">No se pudo cargar el formulario.</div>';
+      }
     });
+}
+// Delegación de eventos para asegurar funcionamiento siempre
+const gridEquipos = document.querySelector('.equipos-grid');
+gridEquipos.addEventListener('click', function(e) {
+  const btnEditar = e.target.closest('.btn-editar-equipo');
+  if (btnEditar) {
+    e.preventDefault();
+    abrirPanelEditarEquipo(btnEditar.dataset.equipoId);
+    return;
+  }
+  const btnEliminar = e.target.closest('.btn-eliminar-equipo');
+  if (btnEliminar) {
+    e.preventDefault();
+    abrirPanelEliminarEquipo(btnEliminar.dataset.equipoId, btnEliminar.dataset.equipoNombre);
+    return;
+  }
+  const btnGestionar = e.target.closest('.btn-gestionar-miembros');
+  if (btnGestionar) {
+    e.preventDefault();
+    abrirOffcanvasGestionarMiembros(btnGestionar.dataset.equipoId, btnGestionar.dataset.equipoNombre);
+  }
 });
 
-function eliminarEquipo(id) {
-    if (confirm('¿Estás seguro de que deseas eliminar este equipo?')) {
-        fetch(`/equipos/eliminar/${id}`, {
+// Panel flotante Editar Equipo
+function abrirPanelEditarEquipo(equipoId) {
+  const panel = document.getElementById('panelEditarEquipo');
+  const content = document.getElementById('panelEditarEquipoContent');
+  panel.style.display = 'block';
+  content.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando...</div>';
+  fetch(`/equipos/editar_trello/${equipoId}`)
+    .then(r => r.text())
+    .then(html => {
+      // Extraer solo el <form> del HTML recibido
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const form = tempDiv.querySelector('form');
+      if (form) {
+        form.onsubmit = function(e) {
+          e.preventDefault();
+          const formData = new FormData(form);
+          fetch(`/equipos/editar_trello/${equipoId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('Equipo eliminado con éxito', 'success');
-                // Recargar la página después de un breve delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                showToast('Error al eliminar el equipo', 'danger');
-            }
-        })
-        .catch(error => {
-            showToast('Error al eliminar el equipo', 'danger');
-        });
-    }
+            body: formData
+          })
+          .then(r => r.text())
+          .then(respHtml => {
+            cerrarPanelEditarEquipo();
+            actualizarListaEquipos();
+          });
+        };
+        // Botón cerrar
+        const btnCerrar = tempDiv.querySelector('.btn-close');
+        if (btnCerrar) btnCerrar.onclick = cerrarPanelEditarEquipo;
+        // Botón volver
+        const btnVolver = form.querySelector('.btn-secondary');
+        if (btnVolver) btnVolver.onclick = function(e){ e.preventDefault(); cerrarPanelEditarEquipo(); };
+        content.innerHTML = '';
+        content.appendChild(form.parentElement ? form.parentElement : form);
+      } else {
+        content.innerHTML = '<div class="text-danger">No se pudo cargar el formulario.</div>';
+      }
+    });
+}
+function cerrarPanelEditarEquipo() {
+  document.getElementById('panelEditarEquipo').style.display = 'none';
+}
+
+// Panel flotante Eliminar Equipo
+let equipoAEliminar = null;
+function abrirPanelEliminarEquipo(equipoId, equipoNombre) {
+  equipoAEliminar = equipoId;
+  const panel = document.getElementById('panelEliminarEquipo');
+  const content = document.getElementById('panelEliminarEquipoContent');
+  panel.style.display = 'block';
+  content.innerHTML = `<div class='fw-bold fs-4 text-danger mb-3'><i class='fas fa-trash me-2'></i>Eliminar equipo</div>
+    <div class='mb-3'>¿Seguro que deseas eliminar el equipo <span class='fw-bold text-primary'>${equipoNombre}</span>? Esta acción también lo eliminará en Trello y no se puede deshacer.</div>
+    <div class='d-flex justify-content-end gap-2 mt-2'>
+      <button class='btn btn-secondary btn-lg px-4' onclick='cerrarPanelEliminarEquipo()'>Cancelar</button>
+      <button class='btn btn-danger btn-lg px-4' onclick='confirmarEliminarEquipo()'><i class='fas fa-trash me-1'></i>Eliminar</button>
+    </div>`;
+}
+function cerrarPanelEliminarEquipo() {
+  document.getElementById('panelEliminarEquipo').style.display = 'none';
+  equipoAEliminar = null;
+}
+function confirmarEliminarEquipo() {
+  if (!equipoAEliminar) return;
+  fetch(`/equipos/eliminar_trello/${equipoAEliminar}`, {
+    method: 'POST',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        cerrarPanelEliminarEquipo();
+        actualizarListaEquipos();
+      } else {
+        alert(data.message || 'No se pudo eliminar el equipo.');
+      }
+    })
+    .catch(() => {
+      alert('Error al eliminar el equipo.');
+    });
+}
+
+// Actualizar lista de equipos por AJAX
+function actualizarListaEquipos() {
+  fetch('/equipos/lista_ajax')
+    .then(r => r.text())
+    .then(html => {
+      const grid = document.querySelector('.equipos-grid');
+      if (grid) grid.innerHTML = html;
+    });
 }
 </script>
-{% endblock %}
+
+<style>
+.equipos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2.2rem 2.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
+}
+.equipo-card-modern {
+    background: rgba(24,28,42,0.92);
+    border: 2.5px solid #7F9CF5;
+    color: #fff;
+    backdrop-filter: blur(4px);
+    border-radius: 2.2rem;
+    box-shadow: 0 8px 32px #23294688, 0 2px 8px #00CFFF44;
+    padding: 2.2rem 1.5rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    min-height: 320px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 0;
+    transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+}
+.equipo-card-modern:hover {
+    box-shadow: 0 20px 48px #5c7cfa44, 0 4px 16px #23263a33;
+    border: 2.5px solid #5c7cfa;
+    transform: translateY(-8px) scale(1.04);
+}
+.equipo-nombre {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 900;
+    color: #00CFFF;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.2rem;
+    text-align: center;
+    text-shadow: 0 2px 8px #232946;
+}
+.equipo-card-modern .banda-miembros {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.13rem;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 0.8rem 1.2rem 0.7rem 1.2rem;
+    margin-bottom: 1.1rem;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 2px 8px #7F9CF544;
+    letter-spacing: 0.2px;
+}
+.equipo-card-modern .btn-primary, .equipo-card-modern .btn-outline-warning, .equipo-card-modern .btn-outline-danger {
+    font-size: 1.13rem;
+    font-weight: 700;
+    border-radius: 1.1rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 0.7rem 1.3rem;
+    margin-bottom: 0.2rem;
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.equipo-card-modern .btn-primary {
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    border: none;
+    color: #fff;
+}
+.equipo-card-modern .btn-primary:hover {
+    background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+}
+.equipo-card-modern .btn-outline-warning {
+    border: 2px solid #fcc419;
+    color: #fcc419;
+    background: none;
+}
+.equipo-card-modern .btn-outline-warning:hover {
+    background: #fcc419;
+    color: #23263a;
+}
+.equipo-card-modern .btn-outline-danger {
+    border: 2px solid #fa5252;
+    color: #fa5252;
+    background: none;
+}
+.equipo-card-modern .btn-outline-danger:hover {
+    background: #fa5252;
+    color: #fff;
+}
+.acceso-equipo-btn-modern {
+    font-size: 1.25rem;
+    font-weight: 800;
+    border-radius: 1.1rem;
+    min-height: 56px;
+    margin-top: 0.7rem;
+    background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px #00CFFF44;
+    border: none;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.acceso-equipo-btn-modern:hover {
+    background: linear-gradient(90deg, #7C3AED 0%, #00CFFF 100%);
+    color: #fff;
+    box-shadow: 0 6px 24px #7C3AED33, 0 0 8px #00CFFF44;
+    transform: scale(1.06);
+}
+.equipo-card-modern .btn-secondary {
+    background: #232946;
+    color: #fff;
+    border-radius: 1.1rem;
+    border: none;
+    font-weight: 700;
+    min-height: 52px;
+}
+.equipo-card-modern .btn-secondary:disabled {
+    opacity: 0.7;
+}
+.equipo-card-modern .btn-sm {
+    font-size: 1.08rem;
+    padding: 0.45rem 1.1rem;
+}
+.equipo-card-modern .btn-group, .equipo-card-modern .d-flex.gap-2 {
+    gap: 0.7rem;
+}
+.equipo-card-modern .btn, .equipo-card-modern .btn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+.equipo-card-modern .btn:active {
+    filter: brightness(0.97);
+}
+.equipo-card-modern .btn[disabled] {
+    opacity: 0.7;
+    pointer-events: none;
+}
+.equipo-card-modern .btn i {
+    margin-right: 0.4em;
+}
+.equipo-card-modern .btn-outline-warning, .equipo-card-modern .btn-outline-danger {
+    margin-bottom: 0 !important;
+}
+.equipo-card-modern .btn-primary.btn-sm {
+    margin-bottom: 0.2rem;
+}
+.equipo-card-modern .btn-group {
+    width: 100%;
+}
+.equipo-card-modern .btn-group .btn {
+    flex: 1 1 0;
+}
+.equipo-card-modern .btn-group .btn:not(:last-child) {
+    margin-right: 0.2rem;
+}
+.equipo-card-modern .btn-group .btn:last-child {
+    margin-left: 0.2rem;
+}
+.equipo-card-modern .btn-group .btn {
+    min-width: 0;
+}
+.equipo-card-modern .btn-group .btn i {
+    margin-right: 0.3em;
+}
+.equipo-card-modern .btn-group .btn {
+    padding: 0.45rem 0.7rem;
+}
+.equipo-card-modern .btn-group .btn:active {
+    filter: brightness(0.97);
+}
+.equipo-card-modern .btn-group .btn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+.equipo-card-modern .btn-group .btn[disabled] {
+    opacity: 0.7;
+    pointer-events: none;
+}
+.equipo-card-modern .btn-group .btn-primary {
+    background: linear-gradient(90deg, #5c7cfa 0%, #38a1fa 100%);
+    border: none;
+    color: #fff;
+}
+.equipo-card-modern .btn-group .btn-primary:hover {
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    color: #fff;
+}
+.equipo-card-modern .btn-group .btn-outline-warning {
+    border: 2px solid #fcc419;
+    color: #fcc419;
+    background: none;
+}
+.equipo-card-modern .btn-group .btn-outline-warning:hover {
+    background: #fcc419;
+    color: #23263a;
+}
+.equipo-card-modern .btn-group .btn-outline-danger {
+    border: 2px solid #fa5252;
+    color: #fa5252;
+    background: none;
+}
+.equipo-card-modern .btn-group .btn-outline-danger:hover {
+    background: #fa5252;
+    color: #fff;
+}
+.equipos-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2.2rem;
+    margin-bottom: 2.2rem;
+    margin-top: 1.2rem;
+}
+.equipos-titulo {
+    font-family: 'Inter', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #23263a;
+    letter-spacing: 1px;
+    margin: 0 2.5rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-shadow: 0 2px 12px #fff, 0 1px 0 #e9ecef;
+}
+.equipos-titulo i {
+    font-size: 2.2rem;
+    color: #5c7cfa;
+}
+.equipos-btn {
+    font-size: 1.18rem;
+    font-weight: 800;
+    border-radius: 1.2rem;
+    padding: 0.8rem 2.1rem;
+    box-shadow: 0 2px 12px #23263a22;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    transition: background 0.18s, box-shadow 0.18s, color 0.18s, transform 0.18s;
+}
+.equipos-btn i {
+    font-size: 1.3em;
+    margin-right: 0.5em;
+}
+.equipos-btn.crear {
+    background: linear-gradient(90deg, #ffe066 0%, #ffd43b 100%);
+    color: #23263a;
+}
+.equipos-btn.crear:hover {
+    background: linear-gradient(90deg, #ffd43b 0%, #ffe066 100%);
+    color: #23263a;
+    box-shadow: 0 4px 16px #ffd43b44;
+    transform: translateY(-2px) scale(1.04);
+}
+.equipos-btn.sync {
+    background: linear-gradient(90deg, #ff922b 0%, #fa5252 100%);
+    color: #fff;
+}
+.equipos-btn.sync:hover {
+    background: linear-gradient(90deg, #fa5252 0%, #ff922b 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px #fa525244;
+    transform: translateY(-2px) scale(1.04);
+}
+.equipos-btn.norm {
+    background: linear-gradient(90deg, #51cf66 0%, #38f9d7 100%);
+    color: #fff;
+}
+.equipos-btn.norm:hover {
+    background: linear-gradient(90deg, #38f9d7 0%, #51cf66 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px #51cf6644;
+    transform: translateY(-2px) scale(1.04);
+}
+#offcanvasGestionarMiembros .offcanvas-header, #offcanvasGestionarMiembros .offcanvas-title {
+  color: #fff;
+  text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+#offcanvasGestionarMiembros .offcanvas-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #00CFFF;
+  letter-spacing: 1.2px;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+#offcanvasGestionarMiembros .offcanvas-body .form-label {
+  font-weight: 700;
+  color: #7F9CF5;
+  font-size: 1.08rem;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.3px;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+#offcanvasGestionarMiembros .offcanvas-body .form-control, #offcanvasGestionarMiembros .offcanvas-body .form-select {
+  font-size: 1.12rem;
+  border-radius: 1.1rem;
+  padding: 0.85rem 1.2rem 0.85rem 2.7rem;
+  box-shadow: 0 2px 8px #2329460a;
+  border: 1.5px solid #00CFFF;
+  margin-bottom: 1.1rem;
+  background: #232946;
+  color: #fff;
+  transition: border 0.2s, box-shadow 0.2s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+#offcanvasGestionarMiembros .offcanvas-body .form-control:focus, #offcanvasGestionarMiembros .offcanvas-body .form-select:focus {
+  border: 1.5px solid #7F9CF5;
+  box-shadow: 0 4px 16px #00CFFF33;
+  background: #181C2A;
+  color: #fff;
+}
+#offcanvasGestionarMiembros .offcanvas-body .form-group:focus-within .input-icon {
+  color: #7F9CF5;
+}
+#offcanvasGestionarMiembros .offcanvas-body .form-group {
+  position: relative;
+  width: 100%;
+}
+#offcanvasGestionarMiembros .offcanvas-body .btn-success {
+  background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+  border: none;
+  font-weight: 800;
+  font-size: 1.13rem;
+  padding: 0.7rem 2.2rem;
+  border-radius: 1.2rem;
+  box-shadow: 0 2px 8px #00CFFF22;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+#offcanvasGestionarMiembros .offcanvas-body .btn-success:hover {
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  box-shadow: 0 4px 16px #7F9CF533;
+  transform: scale(1.04);
+}
+#offcanvasGestionarMiembros .offcanvas-body .btn-secondary {
+  font-size: 1.13rem;
+  padding: 0.7rem 2.2rem;
+  border-radius: 1.2rem;
+  font-weight: 700;
+  margin-left: 0.7rem;
+  background: #232946;
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px #23294611;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+#offcanvasGestionarMiembros .offcanvas-body .btn-secondary:hover {
+  background: #7F9CF5;
+  color: #181C2A;
+  transform: scale(1.04);
+}
+</style>
 {% endblock %} 

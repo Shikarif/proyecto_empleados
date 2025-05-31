@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Equipos</h2>
+    
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for equipo in equipos %}
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ equipo.nombre }}</h5>
+                    <p class="card-text">{{ equipo.descripcion }}</p>
+                    
+                    <!-- Estado del equipo -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge bg-{{ 'success' if equipo.activo else 'secondary' }}">
+                                {{ 'Activo' if equipo.activo else 'Inactivo' }}
+                            </span>
+                            <small class="text-muted ms-2">
+                                {{ equipo.miembros|length }} miembros
+                            </small>
+                        </div>
+                        <div class="position-relative">
+                            <span class="position-absolute top-0 end-0 p-1 bg-{{ 'success' if equipo.activo else 'warning' }} border border-white rounded-circle" 
+                                  style="width: 10px; height: 10px;"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de acceso -->
+                    <a href="{{ url_for('vista_equipo', equipo_id=equipo.id) }}" 
+                       class="btn btn-lg btn-success w-100 shadow-sm acceso-equipo-btn animate__animated animate__fadeIn">
+                        <i class="fas fa-sign-in-alt me-2"></i> Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.acceso-equipo-btn {
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.acceso-equipo-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px #28a74555;
+}
+</style>
+{% endblock %} 

@@ -1,59 +1,53 @@
 {% extends "base.html" %}
 
-{% block contenido %}
+{% block content %}
 <div class="row g-4">
     <!-- Tarjeta de Total de Empleados -->
     <div class="col-12 col-md-4">
-        <div class="card shadow-lg border-0 modern-card h-100 animate__animated animate__fadeInUp">
-            <div class="card-body text-center p-4 bg-gradient-primary text-white rounded-4 position-relative overflow-hidden">
-                <div class="display-1 mb-3 animate__animated animate__pulse animate__infinite">
-                    <i class="fas fa-users"></i>
-                </div>
-                <h5 class="card-title mb-2 fw-semibold">Total de Empleados</h5>
-                <h2 class="display-3 fw-bold mb-0" style="letter-spacing:2px;">{{ total_empleados }}</h2>
+        <div class="kpi-glass-card text-center shadow-lg animate__animated animate__fadeInUp">
+            <div class="kpi-icon-glass mb-2">
+                <i class="fas fa-users"></i>
             </div>
+            <div class="kpi-label-glass">Total de Empleados</div>
+            <div class="kpi-value-glass" style="font-size:2.7rem;">{{ total_empleados }}</div>
         </div>
     </div>
-
-    <!-- Tarjeta de Últimos Agregados -->
+    <!-- Tarjeta de Lista de Líderes -->
     <div class="col-12 col-md-8">
-        <div class="card shadow-lg border-0 modern-card h-100 animate__animated animate__fadeInUp animate__delay-1s">
-            <div class="card-header bg-gradient-info text-white rounded-top-4 d-flex align-items-center gap-2">
-                <i class="fas fa-user-plus fa-lg animate__animated animate__bounceIn"></i>
-                <h5 class="mb-0 fw-semibold">Últimos Empleados Agregados</h5>
+        <div class="glass-table-card animate__animated animate__fadeInUp animate__delay-1s">
+            <div class="glass-table-header bg-cian text-white rounded-top-4 d-flex align-items-center gap-2">
+                <i class="fas fa-user-tie fa-lg"></i>
+                <span class="kpi-label-glass">Lista de Líderes</span>
             </div>
-            <div class="card-body p-0">
+            <div class="glass-table-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                    <table class="glass-table table align-middle mb-0">
+                        <thead>
                             <tr>
                                 <th>Nombre</th>
-                                <th>Equipo</th>
+                                <th>Apellido</th>
+                                <th>Correo</th>
                                 <th>Rol</th>
+                                <th>Equipo</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for empleado in ultimos_agregados %}
-                            <tr class="modern-row">
+                            {% for lider in lista_lideres %}
+                            <tr class="glass-row">
+                                <td>{{ lider.nombre }}</td>
+                                <td>{{ lider.apellido }}</td>
+                                <td>{{ lider.correo }}</td>
+                                <td><span class="badge badge-glass bg-cian">{{ lider.rol|capitalize }}</span></td>
+                                <td><span class="badge badge-glass bg-violeta">{{ lider.equipo or 'Sin equipo' }}</span></td>
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="avatar-circle bg-primary text-white shadow-sm fw-bold fs-6 animate__animated animate__fadeIn">
-                                            {{ empleado['nombre'][0] }}{{ empleado['apellido'][0] }}
-                                        </div>
-                                        <span class="fw-semibold">{{ empleado['nombre'] }} {{ empleado['apellido'] }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info bg-gradient px-3 py-2 animate__animated animate__fadeInRight">
-                                        {% if empleado['equipo_id'] %}
-                                            {% for eq in empleados_por_equipo %}
-                                                {% if eq['equipo'] and loop.index == empleado['equipo_id'] %}{{ eq['equipo'] }}{% endif %}
-                                            {% endfor %}
-                                        {% else %}No especificado{% endif %}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-secondary bg-gradient px-3 py-2 animate__animated animate__fadeInRight">{{ empleado['rol']|capitalize }}</span>
+                                    {% if user_rol in ['lider', 'jefe'] %}
+                                        <a href="#" class="btn btn-sm btn-warning btn-editar-usuario" data-usuario='{{ lider | tojson }}'><i class="fas fa-edit"></i></a>
+                                        <a href="#" class="btn btn-sm btn-danger btn-eliminar-usuario" data-usuario-id="{{ lider.id }}"><i class="fas fa-trash"></i></a>
+                                    {% endif %}
+                                    {% if not lider.equipo %}
+                                        <a href="#" class="btn btn-sm btn-info btn-asignar-equipo" data-usuario-id="{{ lider.id }}" data-equipos='{{ lista_equipos | tojson }}'>Nuevo equipo</a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -63,47 +57,42 @@
             </div>
         </div>
     </div>
-
-    <!-- Gráfico de Empleados por Equipo -->
+    <!-- Tarjeta de Lista de Usuarios (Practicantes) -->
     <div class="col-12">
-        <div class="card shadow-lg border-0 modern-card animate__animated animate__fadeInUp animate__delay-2s">
-            <div class="card-header bg-gradient-success text-white rounded-top-4 d-flex align-items-center gap-2">
-                <i class="fas fa-chart-pie fa-lg animate__animated animate__fadeIn"></i>
-                <h5 class="mb-0 fw-semibold">Distribución por Equipo</h5>
+        <div class="glass-table-card animate__animated animate__fadeInUp animate__delay-2s">
+            <div class="glass-table-header bg-verde text-white rounded-top-4 d-flex align-items-center gap-2">
+                <i class="fas fa-users fa-lg"></i>
+                <span class="kpi-label-glass">Lista de Usuarios</span>
             </div>
-            <div class="card-body p-0">
+            <div class="glass-table-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle mb-0 modern-table">
-                        <thead class="table-light">
+                    <table class="glass-table table align-middle mb-0">
+                        <thead>
                             <tr>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Correo</th>
+                                <th>Rol</th>
                                 <th>Equipo</th>
-                                <th>Total de Empleados</th>
-                                <th>Porcentaje</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for eq in empleados_por_equipo %}
-                            <tr class="modern-row">
+                            {% for usuario in lista_practicantes %}
+                            <tr class="glass-row">
+                                <td>{{ usuario.nombre }}</td>
+                                <td>{{ usuario.apellido }}</td>
+                                <td>{{ usuario.correo }}</td>
+                                <td><span class="badge badge-glass bg-violeta">{{ usuario.rol|capitalize }}</span></td>
+                                <td><span class="badge badge-glass bg-cian">{{ usuario.equipo or 'Sin equipo' }}</span></td>
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-users text-primary fs-5"></i>
-                                        <span class="fw-semibold">{{ eq['equipo'] or 'No especificado' }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-secondary bg-gradient px-3 py-2">{{ eq['total'] }} empleados</span>
-                                </td>
-                                <td style="width: 50%; min-width:180px;">
-                                    <div class="progress modern-progress" style="height:1.7rem; background:#e9ecef;">
-                                        <div class="progress-bar bg-gradient-primary fw-semibold d-flex align-items-center justify-content-center animate__animated animate__slideInLeft"
-                                             role="progressbar"
-                                             style="width: {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%; transition: width 1.2s cubic-bezier(.68,-0.55,.27,1.55); font-size:1rem;"
-                                             aria-valuenow="{{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}"
-                                             aria-valuemin="0" aria-valuemax="100"
-                                             data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%">
-                                            {{ (eq['total'] / total_empleados * 100)|round if total_empleados else 0 }}%
-                                        </div>
-                                    </div>
+                                    {% if user_rol in ['lider', 'jefe'] %}
+                                        <a href="#" class="btn btn-sm btn-warning btn-editar-usuario" data-usuario='{{ usuario | tojson }}'><i class="fas fa-edit"></i></a>
+                                        <a href="#" class="btn btn-sm btn-danger btn-eliminar-usuario" data-usuario-id="{{ usuario.id }}"><i class="fas fa-trash"></i></a>
+                                    {% endif %}
+                                    {% if not usuario.equipo %}
+                                        <a href="#" class="btn btn-sm btn-info btn-asignar-equipo" data-usuario-id="{{ usuario.id }}" data-equipos='{{ lista_equipos | tojson }}'>Nuevo equipo</a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -116,89 +105,140 @@
 </div>
 
 <style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+.kpi-glass-card {
+  background: rgba(24,28,42,0.82);
+  border-radius: 2rem;
+  box-shadow: 0 8px 32px #23294655, 0 2px 8px #00CFFF33;
+  border: 2.5px solid #7F9CF5;
+  backdrop-filter: blur(10px) saturate(1.2);
+  padding: 2.2rem 1.5rem 1.5rem 1.5rem;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: box-shadow 0.22s, transform 0.18s, border 0.18s;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
 }
-.bg-gradient-info {
-    background: linear-gradient(135deg, #3498db, #2ecc71) !important;
+.kpi-glass-card:hover {
+  box-shadow: 0 20px 48px #00CFFF44, 0 4px 16px #7F9CF544;
+  border: 2.5px solid #00CFFF;
+  transform: translateY(-8px) scale(1.04);
 }
-.bg-gradient-success {
-    background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+.kpi-icon-glass {
+  font-size: 2.8rem;
+  color: #00CFFF;
+  margin-bottom: 0.7rem;
+  animation: kpiPulse 1.5s infinite alternate;
+  filter: drop-shadow(0 2px 8px #00CFFF55);
 }
-.modern-card {
-    border-radius: 1.5rem !important;
-    overflow: hidden;
-    transition: box-shadow 0.3s, transform 0.2s;
+.kpi-label-glass {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #7F9CF5;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
 }
-.modern-card:hover {
-    box-shadow: 0 8px 32px #23263a33, 0 1.5px 8px #5c7cfa22;
-    transform: translateY(-4px) scale(1.02);
+.kpi-value-glass {
+  font-size: 2.7rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px #23294655;
+  letter-spacing: 1.5px;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
 }
-.card-header {
-    border-top-left-radius: 1.5rem !important;
-    border-top-right-radius: 1.5rem !important;
-    font-size: 1.15rem;
+.glass-table-card {
+  background: rgba(24,28,42,0.82);
+  border-radius: 2rem;
+  box-shadow: 0 8px 32px #23294655, 0 2px 8px #00CFFF33;
+  border: 2.5px solid #7F9CF5;
+  backdrop-filter: blur(10px) saturate(1.2);
+  margin-bottom: 2.5rem;
+  overflow: hidden;
 }
-.avatar-circle {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-    box-shadow: 0 2px 8px #5c7cfa22;
-    border: 2.5px solid #fff;
-    background: linear-gradient(135deg, #5c7cfa 0%, #51cf66 100%);
-    letter-spacing: 1px;
+.glass-table-header {
+  background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%) !important;
+  background-size: 200% 200%;
+  animation: gradientMove 6s ease-in-out infinite alternate;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 1.2rem 1.5rem;
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #fff !important;
+  text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
 }
-.badge {
-    padding: 0.55em 1.2em;
-    font-weight: 600;
-    font-size: 1.01em;
-    border-radius: 1.2em;
-    box-shadow: 0 1px 4px #23263a11;
-    letter-spacing: 0.5px;
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
-.modern-table tbody tr.modern-row {
-    transition: background 0.18s, box-shadow 0.18s;
-    cursor: pointer;
+.glass-table-header i {
+  color: #fff !important;
+  filter: drop-shadow(0 2px 8px #23294655);
 }
-.modern-table tbody tr.modern-row:hover {
-    background: #f4f6fb !important;
-    box-shadow: 0 2px 12px #5c7cfa11;
+.bg-cian { background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%) !important; }
+.bg-violeta { background: linear-gradient(90deg, #7F9CF5 0%, #232946 100%) !important; }
+.bg-verde { background: linear-gradient(90deg, #2DE1FC 0%, #00CFFF 100%) !important; }
+.glass-table {
+  background: transparent !important;
+  color: #fff !important;
+  border-radius: 1.2rem;
+  overflow: hidden;
 }
-.progress {
-    border-radius: 1.2rem;
-    background-color: #e9ecef;
-    box-shadow: 0 1px 4px #23263a11;
+.glass-table thead th {
+  background: #232946 !important;
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
 }
-.progress-bar {
-    border-radius: 1.2rem;
-    font-weight: 600;
-    font-size: 1.01em;
-    transition: width 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+.glass-row {
+  background: rgba(35,41,70,0.88) !important;
+  color: #fff !important;
+  border-bottom: 1.5px solid #7F9CF5 !important;
+  transition: background 0.2s;
 }
-.modern-progress .progress-bar {
-    background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%) !important;
-    color: #fff;
-    box-shadow: 0 2px 8px #5c7cfa22;
+.glass-row:hover {
+  background: #232946 !important;
 }
-.table td, .table th {
-    vertical-align: middle;
+.glass-row td, .glass-row th {
+  color: #fff !important;
+  font-weight: 500;
+  text-shadow: 0 1px 4px #23294688;
 }
-@media (max-width: 900px) {
-    .modern-card { border-radius: 1rem !important; }
-    .card-header { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; }
-    .avatar-circle { width: 36px; height: 36px; font-size: 1rem; }
+.badge-glass, .badge.badge-glass {
+  background: #fff !important;
+  color: #00CFFF !important;
+  font-weight: 700;
+  font-size: 1.01em;
+  border-radius: 1.2em;
+  box-shadow: 0 1px 4px #23294611;
+  letter-spacing: 0.5px;
+  padding: 0.55em 1.2em;
+  border: 1.5px solid #7F9CF5;
+  margin-right: 0.3em;
 }
-@media (max-width: 600px) {
-    .modern-card { border-radius: 0.7rem !important; }
-    .card-header { border-top-left-radius: 0.7rem !important; border-top-right-radius: 0.7rem !important; }
-    .avatar-circle { width: 30px; height: 30px; font-size: 0.9rem; }
-    .container-fluid-custom { padding: 0.5rem !important; }
+.badge-glass.bg-cian { color: #00CFFF !important; border-color: #00CFFF; }
+.badge-glass.bg-violeta { color: #7F9CF5 !important; border-color: #7F9CF5; }
+.badge-glass.bg-verde { color: #2DE1FC !important; border-color: #2DE1FC; }
+.btn-warning, .btn-danger {
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 600;
+  padding: 0.5em 1.2em;
+  box-shadow: 0 2px 8px #23263a22;
+  border: none;
+  margin-right: 0.2em;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
 }
+.btn-warning:hover { background: #FFD43B !important; color: #232946 !important; }
+.btn-danger:hover { background: #FF61A6 !important; color: #fff !important; }
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -206,6 +246,152 @@ document.addEventListener('DOMContentLoaded', function() {
     tooltipTriggerList.forEach(function (tooltipTriggerEl) {
         new bootstrap.Tooltip(tooltipTriggerEl);
     });
+});
+</script>
+<!-- Panel flotante Editar Usuario -->
+<div id="panelEditarUsuario" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2200; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#7F9CF5;"><i class="fas fa-edit me-2"></i>Editar Usuario</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelEditarUsuario()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelEditarUsuario" method="POST" action="{{ url_for('editar_usuario_api') }}" autocomplete="off">
+      <input type="hidden" name="usuario_id" id="inputUsuarioIdEditar">
+      <div class="mb-2">
+        <label>Nombre</label>
+        <input type="text" class="form-control" name="nombre" id="inputNombreUsuarioEditar" required maxlength="50">
+      </div>
+      <div class="mb-2">
+        <label>Apellido</label>
+        <input type="text" class="form-control" name="apellido" id="inputApellidoUsuarioEditar" required maxlength="50">
+      </div>
+      <div class="mb-2">
+        <label>Correo electrónico</label>
+        <input type="email" class="form-control" name="correo" id="inputCorreoUsuarioEditar" required maxlength="100">
+      </div>
+      <div class="mb-2">
+        <label>Rol</label>
+        <select class="form-select" name="rol" id="inputRolUsuarioEditar" required>
+          <option value="practicante">Practicante</option>
+          <option value="lider">Líder</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label>Equipo</label>
+        <input type="text" class="form-control" name="equipo" id="inputEquipoUsuarioEditar" readonly>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelEditarUsuario()">Cancelar</button>
+        <button type="submit" class="btn btn-primary px-3"><i class="fas fa-save me-1"></i>Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Eliminar Usuario -->
+<div id="panelEliminarUsuario" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2300; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#fa5252;"><i class="fas fa-trash me-2"></i>Eliminar Usuario</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelEliminarUsuario()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelEliminarUsuario" method="POST" action="{{ url_for('eliminar_usuario_api') }}" autocomplete="off">
+      <input type="hidden" name="usuario_id" id="inputUsuarioIdEliminar">
+      <div class="mb-3 text-white">
+        ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelEliminarUsuario()">Cancelar</button>
+        <button type="submit" class="btn btn-danger px-3"><i class="fas fa-trash me-1"></i>Eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Panel flotante Asignar Equipo -->
+<div id="panelAsignarEquipo" class="toast align-items-center border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg panel-glass-float" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2400; display:none;">
+  <div class="d-flex flex-column p-3" style="gap:0.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="panel-title" style="color:#00CFFF;"><i class="fas fa-users-cog me-2"></i>Asignar Equipo</div>
+      <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarPanelAsignarEquipo()" aria-label="Cerrar"></button>
+    </div>
+    <form id="formPanelAsignarEquipo" method="POST" autocomplete="off">
+      <input type="hidden" name="usuario_id" id="inputUsuarioIdAsignarEquipo">
+      <div class="mb-2">
+        <label>Seleccionar equipo</label>
+        <select class="form-select" name="equipo_id" id="inputEquipoIdAsignarEquipo" required>
+          <!-- Opciones de equipos se llenan dinámicamente -->
+        </select>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-secondary px-3" onclick="cerrarPanelAsignarEquipo()">Cancelar</button>
+        <button type="submit" class="btn btn-info px-3"><i class="fas fa-save me-1"></i>Asignar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+// Abrir panel Editar Usuario
+function abrirPanelEditarUsuario(usuario) {
+  document.getElementById('panelEditarUsuario').style.display = 'block';
+  document.getElementById('inputUsuarioIdEditar').value = usuario.id;
+  document.getElementById('inputNombreUsuarioEditar').value = usuario.nombre;
+  document.getElementById('inputApellidoUsuarioEditar').value = usuario.apellido;
+  document.getElementById('inputCorreoUsuarioEditar').value = usuario.correo;
+  document.getElementById('inputRolUsuarioEditar').value = usuario.rol;
+  document.getElementById('inputEquipoUsuarioEditar').value = usuario.equipo || '';
+}
+function cerrarPanelEditarUsuario() {
+  document.getElementById('panelEditarUsuario').style.display = 'none';
+  document.getElementById('formPanelEditarUsuario').reset();
+}
+// Abrir panel Eliminar Usuario
+function abrirPanelEliminarUsuario(usuarioId) {
+  document.getElementById('panelEliminarUsuario').style.display = 'block';
+  document.getElementById('inputUsuarioIdEliminar').value = usuarioId;
+}
+function cerrarPanelEliminarUsuario() {
+  document.getElementById('panelEliminarUsuario').style.display = 'none';
+  document.getElementById('formPanelEliminarUsuario').reset();
+}
+// Abrir panel Asignar Equipo
+function abrirPanelAsignarEquipo(usuarioId, equipos) {
+  document.getElementById('panelAsignarEquipo').style.display = 'block';
+  document.getElementById('inputUsuarioIdAsignarEquipo').value = usuarioId;
+  var select = document.getElementById('inputEquipoIdAsignarEquipo');
+  select.innerHTML = '';
+  equipos.forEach(function(eq) {
+    var opt = document.createElement('option');
+    opt.value = eq.id;
+    opt.textContent = eq.nombre;
+    select.appendChild(opt);
+  });
+}
+function cerrarPanelAsignarEquipo() {
+  document.getElementById('panelAsignarEquipo').style.display = 'none';
+  document.getElementById('formPanelAsignarEquipo').reset();
+}
+// Asignar eventos a los botones de acción (esto debe hacerse con datos reales en producción)
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.btn-editar-usuario').forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const usuario = JSON.parse(this.dataset.usuario);
+      abrirPanelEditarUsuario(usuario);
+    };
+  });
+  document.querySelectorAll('.btn-eliminar-usuario').forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      abrirPanelEliminarUsuario(this.dataset.usuarioId);
+    };
+  });
+  document.querySelectorAll('.btn-asignar-equipo').forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const usuarioId = this.dataset.usuarioId;
+      const equipos = JSON.parse(this.dataset.equipos);
+      abrirPanelAsignarEquipo(usuarioId, equipos);
+    };
+  });
 });
 </script>
 {% endblock %} 

@@ -79,4 +79,30 @@ CREATE TABLE asignaciones (
     estado ENUM('asignada', 'en_progreso', 'completada') DEFAULT 'asignada',
     FOREIGN KEY (empleado_id) REFERENCES empleados(id),
     FOREIGN KEY (tarea_id) REFERENCES tareas(id)
+);
+
+-- Tabla de archivos adjuntos a tareas
+CREATE TABLE archivos_tarea (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tarea_id INT NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    tipo_archivo VARCHAR(50),
+    ruta_archivo VARCHAR(255) NOT NULL,
+    fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
+    usuario_id INT,
+    id_attachment_trello VARCHAR(100),
+    FOREIGN KEY (tarea_id) REFERENCES tareas(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES empleados(id) ON DELETE SET NULL
+);
+
+-- Tabla de comentarios de tareas
+CREATE TABLE IF NOT EXISTS comentarios_tarea (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tarea_id INT NOT NULL,
+    usuario_id INT NOT NULL,
+    comentario TEXT NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id_comment_trello VARCHAR(255) DEFAULT NULL,
+    FOREIGN KEY (tarea_id) REFERENCES tareas(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES empleados(id) ON DELETE CASCADE
 ); 

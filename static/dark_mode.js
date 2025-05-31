@@ -1,14 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const darkModeSwitch = document.getElementById('darkModeSwitch');
-    if (!darkModeSwitch) return; // Solo ejecutar si el switch existe
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
     // Cargar preferencia guardada
     if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark-mode');
-        darkModeSwitch.checked = true;
+        body.classList.add('dark-mode');
+        themeToggle.classList.add('dark');
+    } else {
+        body.classList.remove('dark-mode');
+        themeToggle.classList.remove('dark');
     }
-    // Manejar cambio de tema
-    darkModeSwitch.addEventListener('change', function() {
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('darkMode', this.checked);
-    });
+    // Alternar modo oscuro al hacer click
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            body.classList.toggle('dark-mode');
+            const isDark = body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            themeToggle.classList.toggle('dark', isDark);
+        });
+    }
 }); 

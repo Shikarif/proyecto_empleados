@@ -2,103 +2,105 @@
 
 {% block title %}Mi Perfil{% endblock %}
 
-{% block contenido %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card shadow-lg border-0 animate__animated animate__fadeIn">
-            <div class="card-header bg-gradient-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-user-circle me-2"></i>Mi Perfil</h4>
-            </div>
-            <div class="card-body">
-                <!-- Avatar y datos básicos -->
-                <div class="text-center mb-4">
-                    <div class="avatar-circle bg-primary text-white mx-auto mb-3" style="width: 100px; height: 100px; font-size: 3rem;">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <h5 class="mb-1">{{ usuario.nombre }} {{ usuario.apellido }}</h5>
-                    <p class="text-muted mb-0">{{ usuario.rol|capitalize }}</p>
-                </div>
-                <hr>
-                <!-- Formulario de datos personales -->
-                <form method="POST" action="{{ url_for('actualizar_perfil') }}" class="mb-4" id="formPerfil">
-                    <h5 class="mb-3"><i class="fas fa-user-edit me-2"></i>Datos Personales</h5>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="nombre" class="form-label">Nombre</label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ usuario.nombre }}" required
-                                   pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]+" title="Solo letras y espacios">
-                            <div class="invalid-feedback">Por favor, ingrese un nombre válido.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="apellido" class="form-label">Apellido</label>
-                            <input type="text" class="form-control" id="apellido" name="apellido" value="{{ usuario.apellido }}" required
-                                   pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]+" title="Solo letras y espacios">
-                            <div class="invalid-feedback">Por favor, ingrese un apellido válido.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="email" class="form-label">Correo Electrónico</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ usuario.email }}" required>
-                            <div class="invalid-feedback">Por favor, ingrese un correo electrónico válido.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="telefono" class="form-label">Teléfono</label>
-                            <input type="tel" class="form-control" id="telefono" name="telefono" value="{{ usuario.telefono }}"
-                                   pattern="[0-9+\s-()]+" title="Solo números, espacios y caracteres especiales básicos">
-                            <div class="invalid-feedback">Por favor, ingrese un número de teléfono válido.</div>
-                        </div>
-                    </div>
-                    <div class="text-end mt-3">
-                        <button type="submit" class="btn btn-primary" id="btnGuardarPerfil">
-                            <i class="fas fa-save me-2"></i>Guardar Cambios
-                        </button>
-                    </div>
-                </form>
-                <hr>
-                <!-- Formulario de cambio de contraseña -->
-                <form method="POST" action="{{ url_for('cambiar_password') }}" id="formPassword">
-                    <h5 class="mb-3"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="password_actual" class="form-label">Contraseña Actual</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password_actual" name="password_actual" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password_actual')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback">Por favor, ingrese su contraseña actual.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="password_nueva" class="form-label">Nueva Contraseña</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password_nueva" name="password_nueva" required
-                                       minlength="6" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password_nueva')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback">La contraseña debe tener al menos 6 caracteres, una letra y un número.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="password_confirmar" class="form-label">Confirmar Nueva Contraseña</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password_confirmar" name="password_confirmar" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password_confirmar')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback">Las contraseñas no coinciden.</div>
-                        </div>
-                    </div>
-                    <div class="text-end mt-3">
-                        <button type="submit" class="btn btn-success" id="btnCambiarPassword">
-                            <i class="fas fa-key me-2"></i>Cambiar Contraseña
-                        </button>
-                    </div>
-                </form>
-            </div>
+{% block content %}
+<div class="row justify-content-center animate__animated animate__fadeInUp">
+  <div class="col-lg-9">
+    <div class="perfil-glass-card shadow-lg border-0">
+      <!-- Banner superior con gradiente y avatar -->
+      <div class="perfil-banner-gradient d-flex flex-column flex-md-row align-items-center gap-4 p-4 mb-3 animate__animated animate__fadeInDown">
+        <div class="perfil-avatar-wrapper mx-auto mx-md-0">
+          <form method="POST" action="{{ url_for('subir_avatar') }}" enctype="multipart/form-data" class="text-center">
+            <label for="avatarInput" class="perfil-avatar-glass perfil-avatar-upload" style="cursor:pointer;">
+              {% if usuario.avatar_url %}
+                <img src="{{ url_for('static', filename=usuario.avatar_url) }}" alt="Avatar" class="perfil-avatar-img" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+              {% else %}
+                <i class="fas fa-user"></i>
+              {% endif %}
+              <input type="file" id="avatarInput" name="avatar" accept="image/png, image/jpeg" style="display:none;" onchange="this.form.submit()">
+            </label>
+            <div class="small text-muted mt-2">JPG/PNG, máx 1MB</div>
+          </form>
         </div>
+        <div class="text-center text-md-start flex-grow-1">
+          <h3 class="fw-bold mb-1 perfil-nombre">{{ usuario.nombre }} {{ usuario.apellido }}</h3>
+          <span class="perfil-rol-badge">{{ usuario.rol|capitalize }}</span>
+        </div>
+      </div>
+      <div class="row g-4">
+        <!-- Datos personales -->
+        <div class="col-12 col-lg-6">
+          <div class="perfil-section-card animate__animated animate__fadeInLeft">
+            <h5 class="mb-3 text-primary"><i class="fas fa-user-edit me-2"></i>Datos Personales</h5>
+            <form method="POST" action="{{ url_for('actualizar_perfil') }}" id="formPerfil">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label for="nombre" class="form-label">Nombre</label>
+                  <input type="text" class="form-control perfil-input" id="nombre" name="nombre" value="{{ usuario.nombre }}" required pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]+" title="Solo letras y espacios">
+                </div>
+                <div class="col-12">
+                  <label for="apellido" class="form-label">Apellido</label>
+                  <input type="text" class="form-control perfil-input" id="apellido" name="apellido" value="{{ usuario.apellido }}" required pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]+" title="Solo letras y espacios">
+                </div>
+                <div class="col-12">
+                  <label for="email" class="form-label">Correo Electrónico</label>
+                  <input type="email" class="form-control perfil-input" id="email" name="email" value="{{ usuario.email }}" required>
+                </div>
+                <div class="col-12">
+                  <label for="telefono" class="form-label">Teléfono</label>
+                  <input type="tel" class="form-control perfil-input" id="telefono" name="telefono" value="{{ usuario.telefono }}" pattern="[0-9+\s-()]+" title="Solo números, espacios y caracteres especiales básicos">
+                </div>
+              </div>
+              <div class="text-end mt-4">
+                <button type="submit" class="btn btn-primary perfil-btn-guardar">
+                  <i class="fas fa-save me-2"></i>Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- Cambiar contraseña -->
+        <div class="col-12 col-lg-6">
+          <div class="perfil-section-card animate__animated animate__fadeInRight">
+            <h5 class="mb-3 text-success"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
+            <form method="POST" action="{{ url_for('cambiar_password') }}" id="formPassword">
+              <div class="mb-3">
+                <label for="password_actual" class="form-label">Contraseña Actual</label>
+                <div class="input-group perfil-input-group">
+                  <input type="password" class="form-control perfil-input" id="password_actual" name="password_actual" required>
+                  <button class="btn btn-outline-secondary perfil-eye-btn" type="button" onclick="togglePassword('password_actual')">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="password_nueva" class="form-label">Nueva Contraseña</label>
+                <div class="input-group perfil-input-group">
+                  <input type="password" class="form-control perfil-input" id="password_nueva" name="password_nueva" required minlength="6" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$">
+                  <button class="btn btn-outline-secondary perfil-eye-btn" type="button" onclick="togglePassword('password_nueva')">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="password_confirmar" class="form-label">Confirmar Nueva Contraseña</label>
+                <div class="input-group perfil-input-group">
+                  <input type="password" class="form-control perfil-input" id="password_confirmar" name="password_confirmar" required>
+                  <button class="btn btn-outline-secondary perfil-eye-btn" type="button" onclick="togglePassword('password_confirmar')">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="text-end mt-4">
+                <button type="submit" class="btn btn-success perfil-btn-cambiar">
+                  <i class="fas fa-key me-2"></i>Cambiar Contraseña
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
@@ -168,35 +170,177 @@ document.querySelectorAll('.btn').forEach(button => {
 </script>
 
 <style>
-.form-control:focus {
-    border-color: #5c7cfa;
-    box-shadow: 0 0 0 0.2rem rgba(92, 124, 250, 0.25);
+.perfil-glass-card {
+  background: rgba(24,28,42,0.97);
+  border-radius: 2.2rem;
+  box-shadow: 0 12px 36px #23294644, 0 2px 12px #00CFFF22;
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 2px solid #00CFFF33;
+  padding: 2.5rem 2.2rem 2.2rem 2.2rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+  color: #fff;
 }
-
-.btn {
-    transition: all 0.2s;
+@keyframes glassPop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.perfil-banner-gradient {
+  width: 100%;
+  min-height: 120px;
+  background: linear-gradient(90deg, #232946 0%, #7F9CF5 100%);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px #23263a22, 0 1.5px 8px #00CFFF22;
+  padding: 1.5rem 2.5rem;
+  margin-bottom: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  overflow: hidden;
+  animation: bannerSlideIn 1.2s cubic-bezier(.68,-0.55,.27,1.55);
 }
-
-.input-group .btn-outline-secondary {
-    border-color: #ced4da;
+@keyframes bannerSlideIn {
+  from { opacity: 0; transform: translateY(-40px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
-.input-group .btn-outline-secondary:hover {
-    background-color: #f8f9fa;
-    border-color: #ced4da;
+.perfil-avatar-wrapper {
+  min-width: 120px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-.avatar-circle {
-    transition: transform 0.3s;
+.perfil-avatar-glass {
+  width: 110px; height: 110px;
+  background: linear-gradient(135deg,#232946 0%,#7F9CF5 100%);
+  border-radius: 50%;
+  box-shadow: 0 8px 32px #00CFFF22, 0 2px 8px #43e97b22;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3.5rem;
+  color: #00CFFF;
+  border: 4px solid #00CFFF;
+  transition: box-shadow 0.3s, border 0.3s;
+  animation: avatarPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
 }
-
-.avatar-circle:hover {
-    transform: scale(1.05);
+.perfil-avatar-glass:hover {
+  box-shadow: 0 16px 48px #7F9CF533, 0 4px 16px #00CFFF22;
+  border: 4px solid #7F9CF5;
+}
+@keyframes avatarPop {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+.perfil-nombre {
+  color: #fff;
+  font-size: 2.1rem;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px #23263a22;
+}
+.perfil-rol-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+  color: #232946;
+  font-weight: 800;
+  border-radius: 1.2em;
+  padding: 0.4em 1.2em;
+  font-size: 1.1em;
+  box-shadow: 0 1px 8px #23294611;
+  letter-spacing: 0.5px;
+  margin-top: 0.5em;
+}
+.perfil-section-card {
+  background: rgba(24,28,42,0.92);
+  border-radius: 1.3rem;
+  box-shadow: 0 4px 16px #00CFFF11;
+  border: 1.5px solid #00CFFF33;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  margin-bottom: 1.2rem;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  animation: glassPop 0.8s cubic-bezier(.68,-0.55,.27,1.55);
+  color: #fff;
+}
+.perfil-input {
+  border-radius: 0.8em;
+  border: 1.5px solid #00CFFF33;
+  background: rgba(24,28,42,0.85);
+  box-shadow: 0 1px 4px #00CFFF11;
+  font-size: 1.08em;
+  color: #fff;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.perfil-input:focus {
+  border-color: #00CFFF;
+  box-shadow: 0 0 0 0.2rem rgba(0,207,255,0.13);
+  background: rgba(24,28,42,0.98);
+  color: #fff;
+}
+.perfil-btn-guardar, .perfil-btn-cambiar {
+  border-radius: 1.2em;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.7em 2.2em;
+  box-shadow: 0 2px 8px #00CFFF33;
+  background: linear-gradient(90deg, #00CFFF 0%, #7F9CF5 100%);
+  color: #232946;
+  border: none;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+.perfil-btn-guardar:hover {
+  background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #7F9CF544;
+}
+.perfil-btn-cambiar {
+  background: linear-gradient(90deg, #43e97b 0%, #00CFFF 100%);
+  color: #232946;
+}
+.perfil-btn-cambiar:hover {
+  background: linear-gradient(90deg, #00CFFF 0%, #43e97b 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px #43e97b33;
+}
+.perfil-input-group .perfil-eye-btn {
+  border-radius: 0.8em;
+  border: 1.5px solid #00CFFF33;
+  background: rgba(24,28,42,0.85);
+  color: #00CFFF;
+  transition: background 0.2s, color 0.2s;
+}
+.perfil-input-group .perfil-eye-btn:hover {
+  background: #232946;
+  color: #7F9CF5;
+}
+@media (max-width: 900px) {
+  .perfil-glass-card { padding: 1.2rem 0.7rem; border-radius: 1.1rem; }
+  .perfil-banner-gradient { padding: 1rem 1rem; border-radius: 1rem; }
+  .perfil-section-card { border-radius: 0.8rem; padding: 1.2rem 0.7rem; }
+  .perfil-avatar-glass { width: 80px; height: 80px; font-size: 2.2rem; }
+}
+@media (max-width: 600px) {
+  .perfil-glass-card { padding: 0.5rem 0.2rem; border-radius: 0.7rem; }
+  .perfil-banner-gradient { flex-direction: column; align-items: flex-start; padding: 0.7rem 0.5rem; border-radius: 0.7rem; }
+  .perfil-section-card { border-radius: 0.5rem; padding: 0.7rem 0.3rem; }
+  .perfil-avatar-glass { width: 60px; height: 60px; font-size: 1.3rem; }
+  .perfil-nombre { font-size: 1.2rem; }
+}
+.perfil-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px #00CFFF55;
+  border: none;
+  transition: box-shadow 0.2s, border 0.2s;
+}
+.perfil-avatar-upload:hover {
+  box-shadow: 0 8px 32px #43e97b33, 0 4px 16px #5c7cfa22;
+  border: 4px solid #1e90ff;
+  opacity: 0.92;
 }
 </style>
 {% endblock %} 
