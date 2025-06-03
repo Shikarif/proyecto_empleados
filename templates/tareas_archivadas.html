@@ -1,0 +1,648 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.archivadas-modern-container {
+    min-height: 70vh;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 2rem 2rem;
+    background: rgba(255,255,255,0.10);
+    backdrop-filter: blur(8px) saturate(1.2);
+    border-radius: 2rem;
+    box-shadow: 0 8px 32px #23263a22, 0 2px 8px #5c7cfa22;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+.archivadas-modern-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%);
+    background-size: 200% 200%;
+    animation: gradientMove 6s ease-in-out infinite alternate;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 16px #23263a22;
+    padding: 2rem 2.5rem 1.5rem 2.5rem;
+    margin-bottom: 0.5rem;
+}
+.archivadas-modern-header h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 0;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.archivadas-modern-header .icono-archivo {
+    font-size: 2.2rem;
+    color: #FFD43B;
+    filter: drop-shadow(0 2px 8px #23294655);
+}
+.archivadas-modern-table-container {
+    flex: 1;
+    background: rgba(24,28,42,0.92);
+    border-radius: 1.5rem;
+    box-shadow: 0 2px 8px #23263a11;
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+}
+.archivadas-modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1.08rem;
+    color: #fff;
+    background: none;
+}
+.archivadas-modern-table thead th {
+    background: linear-gradient(120deg, #7F9CF5 0%, #00CFFF 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding: 1rem 0.7rem;
+    border: none;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+.archivadas-modern-table tbody tr {
+    background: #181C2A;
+    color: #fff;
+    transition: background 0.2s;
+}
+.archivadas-modern-table tbody tr:hover {
+    background: #232946;
+}
+.archivadas-modern-table td, .archivadas-modern-table th {
+    color: #fff;
+    border: none;
+    font-weight: 500;
+    text-shadow: 0 1px 4px #23294688;
+}
+.archivadas-modern-table .badge {
+    font-size: 1rem;
+    padding: 0.5em 1.1em;
+    border-radius: 1em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: #7F9CF5;
+    color: #fff;
+    border: 1.5px solid #00CFFF;
+    box-shadow: 0 1px 4px #23294622;
+}
+.archivadas-modern-table .badge-prioridad-alta {
+    background: #ff4d4f;
+    border-color: #ff7875;
+}
+.archivadas-modern-table .badge-prioridad-media {
+    background: #FFD43B;
+    color: #232946;
+    border-color: #ffe066;
+}
+.archivadas-modern-table .badge-prioridad-baja {
+    background: #51cf66;
+    border-color: #69db7c;
+}
+.archivadas-modern-table .badge-estado-completada {
+    background: #00CFFF;
+    border-color: #7F9CF5;
+}
+.archivadas-modern-table .badge-estado-pendiente {
+    background: #FFA94D;
+    border-color: #FFD43B;
+    color: #232946;
+}
+.archivadas-modern-table .badge-estado-en_progreso {
+    background: #7F9CF5;
+    border-color: #00CFFF;
+}
+.archivadas-modern-table .btn-reasignar {
+    background: linear-gradient(90deg, #2DE1FC 0%, #00CFFF 100%);
+    color: #fff;
+    border: none;
+    border-radius: 1.2rem;
+    font-weight: 700;
+    padding: 0.5rem 1.3rem;
+    box-shadow: 0 2px 8px #23263a22;
+    transition: background 0.2s, color 0.2s;
+}
+.archivadas-modern-table .btn-reasignar:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 16px #00CFFF33;
+}
+/* Offcanvas personalizado */
+#offcanvasReasignar {
+    width: 420px;
+    max-width: 95vw;
+    background: rgba(24,28,42,0.98);
+    color: #fff;
+    border-top-left-radius: 1.5rem;
+    border-bottom-left-radius: 1.5rem;
+    box-shadow: 0 8px 32px #23263a44, 0 2px 8px #5c7cfa44;
+    padding-top: 2rem;
+}
+#offcanvasReasignar .offcanvas-header {
+    background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%);
+    color: #fff;
+    border-top-left-radius: 1.5rem;
+    border-bottom: 1px solid #7F9CF5;
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+}
+#offcanvasReasignar .offcanvas-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px #23294655, 0 1px 2px #23294633;
+}
+#offcanvasReasignar .form-label {
+    color: #7F9CF5;
+    font-weight: 600;
+}
+#offcanvasReasignar .form-select, #offcanvasReasignar .form-control {
+    background: #232946;
+    color: #fff;
+    border-radius: 0.8rem;
+    border: 1.5px solid #7F9CF5;
+    margin-bottom: 1rem;
+}
+#offcanvasReasignar .btn-success {
+    background: linear-gradient(90deg, #2DE1FC 0%, #00CFFF 100%);
+    color: #fff;
+    border-radius: 1.2rem;
+    font-weight: 700;
+    padding: 0.5rem 1.3rem;
+    border: none;
+    box-shadow: 0 2px 8px #23263a22;
+    transition: background 0.2s, color 0.2s;
+}
+#offcanvasReasignar .btn-success:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 16px #00CFFF33;
+}
+#offcanvasReasignar .btn-secondary {
+    border-radius: 1.2rem;
+    font-weight: 700;
+    padding: 0.5rem 1.3rem;
+}
+@media (max-width: 900px) {
+    .archivadas-modern-header h2 { font-size: 1.5rem; }
+    .archivadas-modern-container { padding: 1.2rem 0.5rem; }
+    .archivadas-modern-table thead th, .archivadas-modern-table td { font-size: 0.98rem; }
+}
+.archivadas-modern-table td.acciones-col {
+    min-width: 340px;
+    max-width: 360px;
+    width: 360px;
+    text-align: right;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+.archivadas-modern-table .acciones-btn-group {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    align-items: center;
+}
+.archivadas-modern-table .acciones-btn-group .btn {
+    min-width: 44px;
+    max-width: 44px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    padding: 0;
+    border-radius: 50%;
+    font-weight: 700;
+    box-shadow: 0 1px 4px #23294622;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.archivadas-modern-table .acciones-btn-group .btn i {
+    margin: 0;
+    font-size: 1.3em;
+}
+.archivadas-modern-table .acciones-btn-group .btn-reasignar {
+    background: linear-gradient(90deg, #2DE1FC 0%, #00CFFF 100%);
+    color: #fff;
+    border: none;
+}
+.archivadas-modern-table .acciones-btn-group .btn-info {
+    background: #00CFFF;
+    color: #fff;
+    border: none;
+}
+.archivadas-modern-table .acciones-btn-group .btn-warning {
+    background: #FFD43B;
+    color: #232946;
+    border: none;
+}
+.archivadas-modern-table .acciones-btn-group .btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 16px #00CFFF33;
+    transform: scale(1.08);
+}
+@media (max-width: 1100px) {
+    .archivadas-modern-table td.acciones-col {
+        min-width: 220px;
+        max-width: 100vw;
+        width: 100vw;
+        padding: 0.2rem 0.1rem;
+    }
+    .archivadas-modern-table .acciones-btn-group {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.3rem;
+    }
+    .archivadas-modern-table .acciones-btn-group .btn {
+        min-width: 100px;
+        max-width: 100%;
+        width: 100%;
+        font-size: 0.93rem;
+        padding: 0.32rem 0.5rem;
+    }
+}
+.archivadas-modern-table th.titulo-col, .archivadas-modern-table td.titulo-col { width: 15%; min-width: 120px; }
+.archivadas-modern-table th.descripcion-col, .archivadas-modern-table td.descripcion-col { width: 20%; min-width: 150px; }
+.archivadas-modern-table th.equipo-col, .archivadas-modern-table td.equipo-col { width: 12%; min-width: 90px; }
+.archivadas-modern-table th.prioridad-col, .archivadas-modern-table td.prioridad-col { width: 10%; min-width: 80px; }
+.archivadas-modern-table th.estado-col, .archivadas-modern-table td.estado-col { width: 12%; min-width: 90px; }
+.archivadas-modern-table th.fecha-col, .archivadas-modern-table td.fecha-col { width: 16%; min-width: 120px; }
+.archivadas-modern-table th.acciones-col, .archivadas-modern-table td.acciones-col { width: 15%; min-width: 120px; text-align: right; }
+
+.archivadas-modern-table th, .archivadas-modern-table td {
+    box-sizing: border-box;
+    text-align: center;
+    vertical-align: middle;
+}
+.archivadas-modern-table td.acciones-col, .archivadas-modern-table th.acciones-col {
+    text-align: center !important;
+}
+.archivadas-modern-table .acciones-btn-group {
+    justify-content: center;
+}
+.panel-flotante-eliminar {
+  position: fixed;
+  z-index: 1200;
+  min-width: 340px;
+  max-width: 95vw;
+  background: #232946;
+  color: #fff;
+  border-radius: 1.2rem;
+  box-shadow: 0 8px 32px #ff4d4f55, 0 2px 8px #FFD43B55;
+  border: 2.5px solid #ff4d4f;
+  animation: panelFlotanteFadeIn 0.25s;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  overflow: hidden;
+}
+@keyframes panelFlotanteFadeIn {
+  from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.panel-flotante-header {
+  background: linear-gradient(90deg, #ff4d4f 0%, #FFD43B 100%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.2rem;
+  padding: 1rem 1.5rem 0.7rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top-left-radius: 1.2rem;
+  border-top-right-radius: 1.2rem;
+}
+.btn-cerrar-panel {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  margin-left: 1rem;
+  transition: color 0.2s;
+}
+.btn-cerrar-panel:hover { color: #232946; background: #FFD43B; border-radius: 50%; }
+.panel-flotante-body {
+  padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+  background: #232946;
+}
+.alerta-panel {
+  background: #ff4d4f22;
+  color: #FFD43B;
+  border-left: 4px solid #ff4d4f;
+  border-radius: 0.7rem;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: 1.05rem;
+}
+.panel-flotante-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+@media (max-width: 600px) {
+  .panel-flotante-eliminar {
+    min-width: 90vw;
+    left: 50vw;
+    top: 50vh;
+    transform: translate(-50%, -50%);
+  }
+  .panel-flotante-header, .panel-flotante-body { padding: 1rem; }
+}
+</style>
+<div class="archivadas-modern-container">
+    <div class="archivadas-modern-header">
+        <span class="icono-archivo"><i class="fas fa-archive"></i></span>
+        <h2>Tareas Archivadas</h2>
+    </div>
+    {% if current_user.rol == 'jefe' %}
+    <div class="d-flex justify-content-end mb-3">
+        <button id="btnSyncArchivadosTrello" class="btn btn-primary">
+            <span id="syncSpinner" class="spinner-border spinner-border-sm d-none"></span>
+            <i class="fab fa-trello me-2"></i>Sincronizar archivados de Trello
+        </button>
+    </div>
+    {% endif %}
+    <div class="archivadas-modern-table-container">
+        <table class="archivadas-modern-table">
+            <thead>
+                <tr>
+                    <th class="titulo-col">Título</th>
+                    <th class="descripcion-col">Descripción</th>
+                    <th class="equipo-col">Equipo original</th>
+                    <th class="prioridad-col">Prioridad</th>
+                    <th class="estado-col">Estado</th>
+                    <th class="fecha-col">Fecha creación</th>
+                    <th class="acciones-col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tarea in tareas %}
+                <tr>
+                    <td class="fw-semibold titulo-col">{{ tarea.titulo }}</td>
+                    <td class="descripcion-col">{{ tarea.descripcion }}</td>
+                    <td class="equipo-col">{{ tarea.equipo_nombre or tarea.equipo_id or 'Sin equipo' }}</td>
+                    <td class="prioridad-col">
+                        <span class="badge 
+                            {% if tarea.prioridad == 'alta' %}badge-prioridad-alta{% elif tarea.prioridad == 'media' %}badge-prioridad-media{% else %}badge-prioridad-baja{% endif %}">
+                            {{ tarea.prioridad|capitalize }}
+                        </span>
+                    </td>
+                    <td class="estado-col">
+                        <span class="badge 
+                            {% if tarea.estado == 'completada' %}badge-estado-completada{% elif tarea.estado == 'pendiente' %}badge-estado-pendiente{% else %}badge-estado-en_progreso{% endif %}">
+                            {{ tarea.estado|capitalize }}
+                        </span>
+                    </td>
+                    <td class="fecha-col">
+                        {{ tarea.fecha_creacion }}
+                    </td>
+                    <td class="acciones-col">
+                        <div class="acciones-btn-group">
+                            <button class="btn btn-reasignar" onclick="abrirOffcanvasReasignar({{ tarea.id }})" title="Reasignar tarea">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                            <button class="btn btn-info" onclick="abrirOffcanvasArchivos({{ tarea.id }})" title="Ver archivos adjuntos">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <button class="btn btn-warning" onclick="actualizarArchivosAdjuntos({{ tarea.id }}, '{{ tarea.titulo|e|replace("'", "\\'") }}')" title="Actualizar archivos adjuntos">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            {% if current_user.rol == 'jefe' %}
+                            <button class="btn btn-danger" onclick="abrirOffcanvasEliminar({{ tarea.id }}, '{{ tarea.titulo|e|replace("'", "\\'") }}')" title="Eliminar tarea archivada">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted">No hay tareas archivadas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- Offcanvas para reasignar tarea archivada -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasReasignar" aria-labelledby="offcanvasReasignarLabel">
+  <div class="offcanvas-header" style="background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%); color: #fff;">
+    <h5 class="offcanvas-title" id="offcanvasReasignarLabel"><i class="fas fa-user-plus me-2"></i>Reasignar tarea archivada</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form method="POST" action="{{ url_for('reasignar_tarea_archivada') }}">
+      <input type="hidden" name="tarea_id" id="inputTareaIdReasignar">
+      <div class="mb-3">
+        <label for="selectUsuarioReasignar" class="form-label">Selecciona usuario</label>
+        <select class="form-select" name="empleado_id" id="selectUsuarioReasignar" required>
+          <option value="">-- Selecciona usuario --</option>
+          {% for usuario in usuarios %}
+            <option value="{{ usuario.id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="selectEquipoReasignar" class="form-label">Selecciona equipo</label>
+        <select class="form-select" name="equipo_id" id="selectEquipoReasignar" required>
+          <option value="">-- Selecciona equipo --</option>
+          {% for equipo in equipos %}
+            <option value="{{ equipo.id }}">{{ equipo.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancelar</button>
+        <button type="submit" class="btn btn-info">Reasignar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Offcanvas para ver archivos adjuntos -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasArchivos" aria-labelledby="offcanvasArchivosLabel">
+  <div class="offcanvas-header" style="background: linear-gradient(120deg, #181C2A 0%, #7F9CF5 50%, #00CFFF 100%); color: #fff;">
+    <h5 class="offcanvas-title" id="offcanvasArchivosLabel"><i class="fas fa-paperclip me-2"></i>Archivos adjuntos</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" id="offcanvasArchivosBody">
+    <!-- Aquí se cargan los archivos por JS -->
+  </div>
+</div>
+<!-- Panel flotante custom para eliminar tarea archivada (único y fuera del bucle) -->
+<div id="panelEliminarFlotante" class="panel-flotante-eliminar" style="display:none;">
+  <div class="panel-flotante-header">
+    <i class="fas fa-trash-alt me-2"></i>Eliminar tarea archivada
+    <button type="button" class="btn-cerrar-panel" onclick="cerrarPanelEliminar()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="panel-flotante-body">
+    <div class="alerta-panel">
+      <b>¡Advertencia!</b> Esta acción eliminará <u>definitivamente</u> la tarea y todos sus archivos adjuntos del sistema.<br>
+      ¿Eliminar la tarea <span id="eliminarTareaTitulo"></span>?
+    </div>
+    <div class="panel-flotante-acciones">
+      <button type="button" class="btn btn-secondary" onclick="cerrarPanelEliminar()">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">Eliminar definitivamente</button>
+    </div>
+  </div>
+</div>
+<script>
+// Obtener la lista de usuarios y sus equipos desde Jinja
+const usuarios = [
+    {% for usuario in usuarios %}
+    {id: {{ usuario.id }}, nombre: "{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.rol|capitalize }})", equipo_id: {{ usuario.equipo_id|default('null') }}},
+    {% endfor %}
+];
+
+function abrirOffcanvasReasignar(tareaId) {
+    var offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasReasignar'));
+    document.getElementById('inputTareaIdReasignar').value = tareaId;
+    // Reset selects
+    document.getElementById('selectUsuarioReasignar').selectedIndex = 0;
+    document.getElementById('selectEquipoReasignar').selectedIndex = 0;
+    filtrarUsuariosPorEquipo();
+    offcanvas.show();
+}
+
+// Filtrar usuarios según el equipo seleccionado
+function filtrarUsuariosPorEquipo() {
+    const equipoId = document.getElementById('selectEquipoReasignar').value;
+    const selectUsuario = document.getElementById('selectUsuarioReasignar');
+    // Limpiar opciones
+    selectUsuario.innerHTML = '<option value="">-- Selecciona usuario --</option>';
+    if (!equipoId) return;
+    usuarios.filter(u => u.equipo_id == equipoId).forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.nombre;
+        selectUsuario.appendChild(opt);
+    });
+}
+document.getElementById('selectEquipoReasignar').addEventListener('change', filtrarUsuariosPorEquipo);
+
+function abrirOffcanvasArchivos(tareaId) {
+    var offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasArchivos'));
+    var body = document.getElementById('offcanvasArchivosBody');
+    body.innerHTML = '';
+    // Buscar archivos de la tarea
+    var archivos = [];
+    {% for archivo in archivos_tareas_archivadas %}
+        if ({{ archivo.tarea_archivada_id }} == tareaId) {
+            archivos.push({nombre: "{{ archivo.nombre }}", ruta: "{{ archivo.ruta }}"});
+        }
+    {% endfor %}
+    if (archivos.length === 0) {
+        body.innerHTML = '<div class="text-muted">No hay archivos adjuntos para esta tarea.</div>';
+    } else {
+        var html = '<ul class="list-group">';
+        archivos.forEach(function(archivo) {
+            html += '<li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center">'
+                + '<span><i class="fas fa-file-alt me-2"></i>' + archivo.nombre + '</span>'
+                + '<a href="/' + archivo.ruta + '" download class="btn btn-sm btn-success"><i class="fas fa-download"></i></a>'
+                + '</li>';
+        });
+        html += '</ul>';
+        body.innerHTML = html;
+    }
+    offcanvas.show();
+}
+
+function actualizarArchivosAdjuntos(tareaId, titulo) {
+    if (!confirm('¿Deseas actualizar los archivos adjuntos de la tarea "' + titulo + '"?')) return;
+    fetch(`/tareas/archivadas/actualizar_adjuntos/${tareaId}`, {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Archivos adjuntos actualizados correctamente.');
+            // Si el panel de archivos está abierto, recargarlo
+            abrirOffcanvasArchivos(tareaId);
+        } else {
+            alert(data.message || 'No se pudieron actualizar los archivos adjuntos.');
+        }
+    })
+    .catch(() => {
+        alert('Error al actualizar los archivos adjuntos.');
+    });
+}
+
+let panelEliminarTimeout = null;
+function abrirOffcanvasEliminar(tareaId, titulo) {
+    cerrarPanelEliminar();
+    var panel = document.getElementById('panelEliminarFlotante');
+    var tituloSpan = document.getElementById('eliminarTareaTitulo');
+    if (!panel || !tituloSpan) {
+        console.error('No se encontró el panel flotante de eliminación en el DOM');
+        return;
+    }
+    tituloSpan.textContent = '"' + titulo + '"';
+    document.getElementById('btnConfirmarEliminar').onclick = function() {
+        eliminarTareaArchivada(tareaId);
+        cerrarPanelEliminar();
+    };
+    panel.style.display = 'block';
+    // Cerrar automáticamente después de 20s si no hay acción
+    if (panelEliminarTimeout) clearTimeout(panelEliminarTimeout);
+    panelEliminarTimeout = setTimeout(cerrarPanelEliminar, 20000);
+}
+function cerrarPanelEliminar() {
+    var panel = document.getElementById('panelEliminarFlotante');
+    if (panel) panel.style.display = 'none';
+    if (panelEliminarTimeout) clearTimeout(panelEliminarTimeout);
+}
+
+function eliminarTareaArchivada(tareaId) {
+    fetch(`/tareas/archivadas/eliminar/${tareaId}`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                alert('Tarea archivada eliminada correctamente.');
+                location.reload();
+            } else {
+                alert(data.message || 'No se pudo eliminar la tarea archivada.');
+            }
+        })
+        .catch(() => {
+            alert('Error al eliminar la tarea archivada.');
+        });
+}
+
+const btnSync = document.getElementById('btnSyncArchivadosTrello');
+if (btnSync) {
+    btnSync.onclick = function() {
+        btnSync.disabled = true;
+        document.getElementById('syncSpinner').classList.remove('d-none');
+        fetch('/tareas/sincronizar_archivados_trello', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                btnSync.disabled = false;
+                document.getElementById('syncSpinner').classList.add('d-none');
+                if(data.success) {
+                    alert(data.message || '¡Sincronización completada!');
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al sincronizar archivados de Trello.');
+                }
+            })
+            .catch(() => {
+                btnSync.disabled = false;
+                document.getElementById('syncSpinner').classList.add('d-none');
+                alert('Error al sincronizar archivados de Trello.');
+            });
+    };
+}
+</script>
+{% endblock %} 

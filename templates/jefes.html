@@ -62,9 +62,7 @@
                   <td class="d-flex gap-2">
                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarLider" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-user-plus"></i> Asignar Líder</button>
                     <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarEquipo" data-equipo-id="{{ equipo.id }}" data-equipo-nombre="{{ equipo.nombre }}"><i class="fas fa-edit"></i> Editar</button>
-                    <form method="POST" action="{{ url_for('eliminar_equipo', id=equipo.id) }}" class="d-inline-block" onsubmit="return confirm('¿Seguro que deseas eliminar este equipo?');">
-                      <button class="btn btn-danger btn-sm" type="submit" {% if equipo.total_miembros > 0 %}disabled title="No se puede eliminar un equipo con miembros"{% endif %}><i class="fas fa-trash-alt"></i> Eliminar</button>
-                    </form>
+                    <button class="btn btn-danger btn-sm btn-eliminar-equipo" type="button" data-equipo-id="{{ equipo.id }}" {% if equipo.total_miembros > 0 %}disabled title="No se puede eliminar un equipo con miembros"{% endif %}><i class="fas fa-trash-alt"></i> Eliminar</button>
                   </td>
                 </tr>
                 {% endfor %}
@@ -437,6 +435,30 @@ if(selectUsuario && selectEquipo) {
     }
   };
 }
+document.querySelectorAll('.btn-eliminar-equipo').forEach(btn => {
+  btn.onclick = function() {
+    const equipoId = btn.getAttribute('data-equipo-id');
+    if (!equipoId) return;
+    if (!confirm('¿Seguro que deseas eliminar este equipo?')) return;
+    fetch(`/equipos/eliminar_trello/${equipoId}`, {
+      method: 'POST',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        // Eliminar la fila de la tabla sin recargar la página
+        const fila = btn.closest('tr');
+        if (fila) fila.remove();
+      } else {
+        alert(data.message || 'No se pudo eliminar el equipo.');
+      }
+    })
+    .catch(() => {
+      alert('Error al eliminar el equipo.');
+    });
+  };
+});
 </script>
 <style>
 .kpi-card-glass {

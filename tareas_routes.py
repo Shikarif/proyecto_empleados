@@ -24,6 +24,7 @@ import os
 from werkzeug.utils import secure_filename
 from flask import current_app
 from notificaciones_utils import crear_y_emitir_notificacion
+import shutil
 
 # Crear Blueprint para las rutas de tareas
 tareas_bp = Blueprint('tareas', __name__)
@@ -1138,4 +1139,168 @@ def eliminar_tarea(tarea_id):
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({'success': True, 'message': 'Tarea eliminada correctamente.'}) 
+    return jsonify({'success': True, 'message': 'Tarea eliminada correctamente.'})
+
+@tareas_bp.route('/tareas/archivar/<int:tarea_id>', methods=['POST'])
+@login_required
+def archivar_tarea_manual(tarea_id):
+    if current_user.rol != 'jefe':
+        return jsonify({'success': False, 'message': 'Acceso restringido solo para jefes.'}), 403
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        # Obtener la tarea
+        cursor.execute('SELECT * FROM tareas_trello WHERE id = %s', (tarea_id,))
+        tarea = cursor.fetchone()
+        if not tarea:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Tarea no encontrada.'}), 404
+        # Insertar en tareas_archivadas
+        cursor.execute('''
+            INSERT INTO tareas_archivadas (titulo, descripcion, equipo_nombre, fecha_creacion, prioridad, estado, idCardTrello)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            tarea['titulo'], tarea['descripcion'], tarea.get('equipo_id', ''), tarea['fecha_creacion'], tarea['prioridad'], tarea['estado'], tarea.get('idCardTrello')
+        ))
+        # Eliminar de Trello si corresponde
+        if tarea.get('idCardTrello'):
+            try:
+                eliminar_tarjeta_trello(tarea['idCardTrello'])
+            except Exception as e:
+                pass  # No detener el proceso si falla Trello
+        # Eliminar de tareas_trello
+        cursor.execute('DELETE FROM tareas_trello WHERE id = %s', (tarea_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al archivar tarea: {str(e)}'}), 500 
+
+def sync_trello_archivados():
+    from app import get_connection, TRELLO_API_KEY, TRELLO_API_TOKEN
+    import os, shutil, requests
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute('SELECT id, idBoard FROM equipos WHERE idBoard IS NOT NULL')
+    equipos = cursor.fetchall()
+    total_importados = 0
+    for equipo in equipos:
+        idBoard = equipo['idBoard']
+        equipo_id = equipo['id']
+        url_archivadas = f"https://api.trello.com/1/boards/{idBoard}/cards/closed"
+        params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+        resp = requests.get(url_archivadas, params=params)
+        if resp.status_code != 200:
+            continue
+        tarjetas = resp.json()
+        for card in tarjetas:
+            idCardTrello = card['id']
+            titulo = card['name']
+            descripcion = card.get('desc', '')
+            fecha_creacion = card.get('dateLastActivity') or card.get('date')
+            prioridad = 'media'
+            estado = 'archivada'
+            # Verificar si ya existe en tareas_archivadas
+            cursor.execute('SELECT id FROM tareas_archivadas WHERE idCardTrello = %s', (idCardTrello,))
+            if cursor.fetchone():
+                continue
+            # Insertar en tareas_archivadas
+            cursor.execute('''
+                INSERT INTO tareas_archivadas (titulo, descripcion, equipo_nombre, fecha_creacion, prioridad, estado, idCardTrello)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (titulo, descripcion, equipo_id, fecha_creacion, prioridad, estado, idCardTrello))
+            tarea_archivada_id = cursor.lastrowid
+            # Descargar archivos adjuntos
+            os.makedirs('archivos_archivados', exist_ok=True)
+            url_attachments = f"https://api.trello.com/1/cards/{idCardTrello}/attachments"
+            resp_att = requests.get(url_attachments, params=params)
+            archivos_guardados = []
+            if resp_att.status_code == 200:
+                for adj in resp_att.json():
+                    nombre = adj['name']
+                    url_file = adj['url']
+                    ruta_local = f"archivos_archivados/{tarea_archivada_id}_{nombre}"
+                    try:
+                        r = requests.get(url_file, stream=True, timeout=10)
+                        content_type = r.headers.get('Content-Type', '')
+                        if 'text/html' not in content_type and r.status_code == 200:
+                            with open(ruta_local, 'wb') as f:
+                                shutil.copyfileobj(r.raw, f)
+                            archivos_guardados.append({'nombre': nombre, 'ruta': ruta_local})
+                        else:
+                            archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+                    except Exception:
+                        archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+            for archivo in archivos_guardados:
+                cursor.execute('''
+                    INSERT INTO archivos_tareas_archivadas (tarea_archivada_id, nombre, ruta)
+                    VALUES (%s, %s, %s)
+                ''', (tarea_archivada_id, archivo['nombre'], archivo['ruta']))
+            total_importados += 1
+    conexion.commit()
+    cursor.close()
+    conexion.close()
+    return total_importados
+
+@tareas_bp.route('/tareas/sincronizar_archivados_trello', methods=['POST'])
+@login_required
+def sincronizar_archivados_trello():
+    from flask_login import current_user
+    if current_user.rol != 'jefe':
+        return {'success': False, 'message': 'Acceso restringido solo para jefes.'}, 403
+    try:
+        total = sync_trello_archivados()
+        return {'success': True, 'message': f'Se importaron {total} tareas archivadas desde Trello.'}
+    except Exception as e:
+        return {'success': False, 'message': f'Error: {str(e)}'}, 500 
+
+@tareas_bp.route('/tareas/archivadas/eliminar/<int:tarea_id>', methods=['POST'])
+@login_required
+def eliminar_tarea_archivada(tarea_id):
+    from flask_login import current_user
+    if current_user.rol != 'jefe':
+        return {'success': False, 'message': 'Acceso restringido solo para jefes.'}, 403
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        # 1. Obtener el idCardTrello de la tarea archivada (si existe) para poder eliminar la tarjeta en Trello
+        cursor.execute('SELECT idCardTrello FROM tareas_archivadas WHERE id = %s', (tarea_id,))
+        row = cursor.fetchone()
+        idCardTrello = row['idCardTrello'] if row else None
+        # 2. Si existe idCardTrello, eliminar la tarjeta en Trello usando la API
+        if idCardTrello:
+            import requests
+            from app import TRELLO_API_KEY, TRELLO_API_TOKEN
+            url = f"https://api.trello.com/1/cards/{idCardTrello}"
+            params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+            try:
+                # Petición DELETE a la API de Trello para eliminar la tarjeta (aunque esté archivada)
+                requests.delete(url, params=params, timeout=10)
+            except Exception:
+                # Si hay error de red o la tarjeta ya no existe, continuar con la eliminación local
+                pass
+        # 3. Eliminar archivos físicos asociados a la tarea archivada (solo si existen y no son enlaces externos)
+        cursor.execute('SELECT ruta FROM archivos_tareas_archivadas WHERE tarea_archivada_id = %s', (tarea_id,))
+        archivos = cursor.fetchall()
+        for archivo in archivos:
+            ruta = archivo[0] if isinstance(archivo, (list, tuple)) else archivo['ruta']
+            import os
+            if ruta and os.path.exists(ruta) and not ruta.startswith('http'):
+                try:
+                    os.remove(ruta)
+                except Exception:
+                    pass
+        # 4. Eliminar registros de archivos adjuntos en la base de datos
+        cursor.execute('DELETE FROM archivos_tareas_archivadas WHERE tarea_archivada_id = %s', (tarea_id,))
+        # 5. Eliminar la tarea archivada de la base de datos
+        cursor.execute('DELETE FROM tareas_archivadas WHERE id = %s', (tarea_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        # 6. Devolver éxito
+        return {'success': True}
+    except Exception as e:
+        # Si ocurre cualquier error, devolver mensaje de error
+        return {'success': False, 'message': f'Error: {str(e)}'}, 500 

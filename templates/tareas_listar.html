@@ -675,6 +675,9 @@
                 </button>
                 <a href="{{ url_for('tareas.nueva_tarea_form') }}" class="btn btn-success"><i class="fas fa-plus me-2"></i>Nueva tarea</a>
             {% endif %}
+            {% if user_rol == 'jefe' %}
+                <a href="{{ url_for('ver_tareas_archivadas') }}" class="btn btn-warning"><i class="fas fa-archive me-2"></i>Ver tareas archivadas</a>
+            {% endif %}
         </div>
     </div>
     <form class="tareas-modern-filtros" id="formFiltros">
@@ -719,6 +722,9 @@
                         {% if user_rol in ['lider', 'jefe'] %}
                             <button class="btn btn-circular btn-info" type="button" onclick="abrirOffcanvasDetalle({{ tarea.id }})" title="Ver detalles"><i class="fas fa-eye"></i></button>
                             <button class="btn btn-circular btn-danger" type="button" onclick="abrirToastEliminar({{ tarea.id }}, this)" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            {% if user_rol == 'jefe' %}
+                                <button class="btn btn-circular btn-warning" type="button" onclick="confirmarArchivarTarea({{ tarea.id }}, this)" title="Archivar tarea"><i class="fas fa-archive"></i></button>
+                            {% endif %}
                         {% endif %}
                         <button class="btn btn-circular btn-secondary" type="button" onclick="abrirOffcanvasComentarios({{ tarea.id }})" title="Comentarios"><i class="fas fa-comments"></i></button>
                     </td>
@@ -1188,6 +1194,34 @@ function asignarEventosEliminarAdjunto(tareaId) {
         });
     };
   });
+}
+function confirmarArchivarTarea(tareaId, btn) {
+    if (confirm('¿Seguro que deseas archivar esta tarea?')) {
+        btn.disabled = true;
+        fetch(`/tareas/archivar/${tareaId}`, {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = btn.closest('tr');
+                if (window.$ && $.fn.DataTable && $('#tablaTareas').hasClass('dataTable')) {
+                    $('#tablaTareas').DataTable().row(row).remove().draw();
+                } else if (row) {
+                    row.remove();
+                }
+                mostrarToast('Tarea archivada correctamente.','success');
+            } else {
+                mostrarToast(data.message || 'No se pudo archivar la tarea.','danger');
+                btn.disabled = false;
+            }
+        })
+        .catch(() => {
+            mostrarToast('Error al archivar la tarea.','danger');
+            btn.disabled = false;
+        });
+    }
 }
 </script>
 {% endblock %}

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from db_config import get_connection
 from datetime import datetime
-from tareas_routes import tareas_bp  # Importar el blueprint de tareas
+from tareas_routes import tareas_bp, crear_tarjeta_trello  # Importar el blueprint y la función de Trello
 import hashlib
 import bcrypt
 from collections import Counter
@@ -26,6 +26,7 @@ import os
 from PIL import Image
 from PIL import UnidentifiedImageError
 from helpers import equipo_requerido
+import shutil
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para los mensajes flash
@@ -827,7 +828,22 @@ def cambiar_password():
 def eliminar_equipo(id):
     try:
         conexion = get_connection()
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
+        # Obtener equipo y correo antes de eliminar
+        cursor.execute("SELECT equipo_id, correo FROM empleados WHERE id=%s", (id,))
+        row = cursor.fetchone()
+        equipo_id = row['equipo_id'] if row else None
+        correo = row['correo'] if row else None
+        # Eliminar de Trello si corresponde
+        if equipo_id and correo:
+            cursor.execute("SELECT idBoard FROM equipos WHERE id=%s", (equipo_id,))
+            row = cursor.fetchone()
+            idBoard = row['idBoard'] if row else None
+            if idBoard:
+                eliminar_de_tablero_trello(idBoard, correo)
+        # Dejar tareas pendientes sin asignar
+        cursor.execute("UPDATE tareas_trello SET empleado_id = NULL WHERE empleado_id = %s AND estado != 'completada'", (id,))
+        cursor.execute("DELETE FROM empleados_trello WHERE empleado_id = %s", (id,))
         cursor.execute("DELETE FROM empleados WHERE id=%s", (id,))
         conexion.commit()
         flash('Empleado eliminado exitosamente!', 'success')
@@ -1904,27 +1920,30 @@ def editar_usuario_api():
         return f'Error al editar usuario: {str(e)}', 500
 
 @app.route('/usuarios/eliminar', methods=['POST'])
+@login_required
 def eliminar_usuario_api():
+    if current_user.rol != 'jefe':
+        return 'Acceso restringido solo para jefes', 403
     id = request.form.get('usuario_id')
     if not id:
         return 'ID de usuario requerido', 400
     try:
+        archivar_tareas_usuario(id)
         conexion = get_connection()
         cursor = conexion.cursor(dictionary=True)
-        # Obtener equipo y correo antes de eliminar
+        # Eliminar asignaciones
+        cursor.execute("DELETE FROM asignaciones WHERE empleado_id = %s", (id,))
+        # Eliminar de Trello si corresponde
         cursor.execute("SELECT equipo_id, correo FROM empleados WHERE id=%s", (id,))
         row = cursor.fetchone()
         equipo_id = row['equipo_id'] if row else None
         correo = row['correo'] if row else None
-        # Eliminar de Trello si corresponde
         if equipo_id and correo:
             cursor.execute("SELECT idBoard FROM equipos WHERE id=%s", (equipo_id,))
             row = cursor.fetchone()
             idBoard = row['idBoard'] if row else None
             if idBoard:
                 eliminar_de_tablero_trello(idBoard, correo)
-        # Dejar tareas pendientes sin asignar
-        cursor.execute("UPDATE tareas_trello SET empleado_id = NULL WHERE empleado_id = %s AND estado != 'completada'", (id,))
         cursor.execute("DELETE FROM empleados_trello WHERE empleado_id = %s", (id,))
         cursor.execute("DELETE FROM empleados WHERE id=%s", (id,))
         conexion.commit()
@@ -2000,6 +2019,205 @@ def cambiar_equipo_usuario():
     finally:
         conexion.close()
     return redirect(url_for('jefes'))
+
+# --- NUEVO: Tabla y lógica de tareas archivadas ---
+
+def archivar_tareas_usuario(usuario_id):
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Crear directorio si no existe
+    os.makedirs('archivos_archivados', exist_ok=True)
+    # Obtener tareas activas del usuario
+    cursor.execute("SELECT * FROM tareas_trello WHERE empleado_id = %s", (usuario_id,))
+    tareas = cursor.fetchall()
+    for tarea in tareas:
+        archivos_guardados = []
+        # Descargar archivos adjuntos de Trello si existe idCardTrello
+        if tarea.get('idCardTrello'):
+            url_attachments = f"https://api.trello.com/1/cards/{tarea['idCardTrello']}/attachments"
+            params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+            resp = requests.get(url_attachments, params=params)
+            if resp.status_code == 200:
+                for adj in resp.json():
+                    nombre = adj['name']
+                    url_file = adj['url']
+                    ruta_local = f"archivos_archivados/{tarea['id']}_{nombre}"
+                    try:
+                        r = requests.get(url_file, stream=True, timeout=10)
+                        content_type = r.headers.get('Content-Type', '')
+                        # Solo guardar si es un archivo descargable
+                        if 'text/html' not in content_type and r.status_code == 200:
+                            with open(ruta_local, 'wb') as f:
+                                shutil.copyfileobj(r.raw, f)
+                            archivos_guardados.append({'nombre': nombre, 'ruta': ruta_local})
+                        else:
+                            # Si es un enlace externo, guardar solo el enlace
+                            archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+                    except Exception as e:
+                        # Si falla la descarga, guardar solo el enlace
+                        archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+        # Insertar en tareas_archivadas
+        cursor.execute("""
+            INSERT INTO tareas_archivadas (titulo, descripcion, equipo_nombre, fecha_creacion, prioridad, estado, idCardTrello)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            tarea['titulo'], tarea['descripcion'], tarea.get('equipo_id', ''), tarea['fecha_creacion'], tarea['prioridad'], tarea['estado'], tarea.get('idCardTrello')
+        ))
+        tarea_archivada_id = cursor.lastrowid
+        # Guardar archivos en la tabla archivos_tareas_archivadas
+        for archivo in archivos_guardados:
+            cursor.execute("""
+                INSERT INTO archivos_tareas_archivadas (tarea_archivada_id, nombre, ruta)
+                VALUES (%s, %s, %s)
+            """, (tarea_archivada_id, archivo['nombre'], archivo['ruta']))
+        # Eliminar de Trello si corresponde
+        if tarea.get('idCardTrello'):
+            eliminar_tarjeta_trello(tarea['idCardTrello'])
+        # Eliminar de tareas_trello
+        cursor.execute("DELETE FROM tareas_trello WHERE id = %s", (tarea['id'],))
+    conexion.commit()
+    cursor.close()
+    conexion.close()
+
+# Endpoint para mostrar tareas archivadas (solo jefe)
+@app.route('/tareas/archivadas')
+@login_required
+def ver_tareas_archivadas():
+    if current_user.rol != 'jefe':
+        return 'Acceso restringido solo para jefes', 403
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM tareas_archivadas ORDER BY fecha_archivado DESC")
+    tareas = cursor.fetchall()
+    # Obtener todos los usuarios (líderes y practicantes)
+    cursor.execute("SELECT id, nombre, apellido, rol, equipo_id FROM empleados WHERE rol IN ('lider', 'practicante') ORDER BY nombre")
+    usuarios = cursor.fetchall()
+    # Obtener todos los equipos
+    cursor.execute("SELECT id, nombre FROM equipos ORDER BY nombre")
+    equipos = cursor.fetchall()
+    # Obtener archivos adjuntos de tareas archivadas
+    cursor.execute("SELECT * FROM archivos_tareas_archivadas")
+    archivos_tareas_archivadas = cursor.fetchall()
+    conexion.close()
+    return render_template('tareas_archivadas.html', tareas=tareas, usuarios=usuarios, equipos=equipos, archivos_tareas_archivadas=archivos_tareas_archivadas)
+
+# Endpoint para reasignar tarea archivada
+@app.route('/tareas/archivadas/reasignar', methods=['POST'])
+@login_required
+def reasignar_tarea_archivada():
+    if current_user.rol != 'jefe':
+        return 'Acceso restringido solo para jefes', 403
+    tarea_id = request.form.get('tarea_id')
+    nuevo_empleado_id = request.form.get('empleado_id')
+    nuevo_equipo_id = request.form.get('equipo_id')
+    if not tarea_id or not nuevo_empleado_id or not nuevo_equipo_id:
+        return 'Datos incompletos', 400
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Obtener datos de la tarea archivada
+    cursor.execute("SELECT * FROM tareas_archivadas WHERE id = %s", (tarea_id,))
+    tarea = cursor.fetchone()
+    if not tarea:
+        conexion.close()
+        return 'Tarea no encontrada', 404
+    # Obtener idBoard del equipo
+    cursor.execute('SELECT idBoard FROM equipos WHERE id = %s', (nuevo_equipo_id,))
+    row = cursor.fetchone()
+    idBoard = row['idBoard'] if row else None
+    idCardTrello = None
+    if idBoard:
+        # Crear tarjeta en Trello
+        idCardTrello = crear_tarjeta_trello(idBoard, tarea['titulo'], tarea['descripcion'])
+    # Crear tarea activa
+    cursor.execute("""
+        INSERT INTO tareas_trello (titulo, descripcion, fecha_creacion, prioridad, estado, equipo_id, empleado_id, idCardTrello)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        tarea['titulo'], tarea['descripcion'], tarea['fecha_creacion'], tarea['prioridad'], tarea['estado'], nuevo_equipo_id, nuevo_empleado_id, idCardTrello
+    ))
+    # Eliminar de tareas_archivadas
+    cursor.execute("DELETE FROM tareas_archivadas WHERE id = %s", (tarea_id,))
+    conexion.commit()
+    conexion.close()
+    return redirect(url_for('ver_tareas_archivadas'))
+
+# Helper para eliminar tarjeta de Trello
+
+def eliminar_tarjeta_trello(idCardTrello):
+    url = f"https://api.trello.com/1/cards/{idCardTrello}"
+    params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+    requests.delete(url, params=params)
+    return True
+
+def crear_tabla_archivos_tareas_archivadas():
+    conexion = get_connection()
+    cursor = conexion.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS archivos_tareas_archivadas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tarea_archivada_id INT,
+            nombre VARCHAR(255),
+            ruta VARCHAR(255),
+            FOREIGN KEY (tarea_archivada_id) REFERENCES tareas_archivadas(id) ON DELETE CASCADE
+        )
+    ''')
+    conexion.commit()
+    conexion.close()
+
+crear_tabla_archivos_tareas_archivadas()
+
+@app.route('/tareas/archivadas/actualizar_adjuntos/<int:tarea_id>', methods=['POST'])
+@login_required
+def actualizar_adjuntos_tarea_archivada(tarea_id):
+    if current_user.rol != 'jefe':
+        return {'success': False, 'message': 'Acceso restringido solo para jefes.'}, 403
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    # Buscar la tarea archivada y su idCardTrello original (si existe)
+    cursor.execute("SELECT * FROM tareas_archivadas WHERE id = %s", (tarea_id,))
+    tarea = cursor.fetchone()
+    if not tarea:
+        conexion.close()
+        return {'success': False, 'message': 'Tarea archivada no encontrada.'}, 404
+    # Buscar en tareas_trello_archivadas (si tienes una tabla de respaldo) o en tareas_trello eliminadas
+    # Aquí asumimos que guardaste el id original en la columna equipo_nombre o similar
+    idCardTrello = tarea.get('idCardTrello')
+    if not idCardTrello:
+        conexion.close()
+        return {'success': False, 'message': 'No se encontró el idCardTrello original para esta tarea.'}, 404
+    # Descargar archivos adjuntos de Trello
+    os.makedirs('archivos_archivados', exist_ok=True)
+    url_attachments = f"https://api.trello.com/1/cards/{idCardTrello}/attachments"
+    params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
+    resp = requests.get(url_attachments, params=params)
+    archivos_guardados = []
+    if resp.status_code == 200:
+        for adj in resp.json():
+            nombre = adj['name']
+            url_file = adj['url']
+            ruta_local = f"archivos_archivados/{tarea_id}_{nombre}"
+            try:
+                r = requests.get(url_file, stream=True, timeout=10)
+                content_type = r.headers.get('Content-Type', '')
+                if 'text/html' not in content_type and r.status_code == 200:
+                    with open(ruta_local, 'wb') as f:
+                        shutil.copyfileobj(r.raw, f)
+                    archivos_guardados.append({'nombre': nombre, 'ruta': ruta_local})
+                else:
+                    archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+            except Exception as e:
+                archivos_guardados.append({'nombre': nombre, 'ruta': url_file})
+    # Guardar archivos en la tabla archivos_tareas_archivadas (evitar duplicados)
+    for archivo in archivos_guardados:
+        cursor.execute("SELECT COUNT(*) as total FROM archivos_tareas_archivadas WHERE tarea_archivada_id = %s AND nombre = %s", (tarea_id, archivo['nombre']))
+        if cursor.fetchone()['total'] == 0:
+            cursor.execute("""
+                INSERT INTO archivos_tareas_archivadas (tarea_archivada_id, nombre, ruta)
+                VALUES (%s, %s, %s)
+            """, (tarea_id, archivo['nombre'], archivo['ruta']))
+    conexion.commit()
+    conexion.close()
+    return {'success': True}
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
