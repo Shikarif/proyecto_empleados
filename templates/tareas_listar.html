@@ -635,6 +635,35 @@
     background: linear-gradient(90deg, #7F9CF5 0%, #00CFFF 100%);
     color: #fff;
 }
+.comentarios-container {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+.comentario {
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+    transition: all 0.3s ease;
+}
+.comentario:hover {
+    background-color: #e9ecef;
+    transform: translateX(5px);
+}
+.fuente-badge {
+    font-size: 0.8em;
+}
+.acciones-comentario {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.comentario:hover .acciones-comentario {
+    opacity: 1;
+}
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}
 </style>
 <div class="tareas-modern-container">
     <div class="tareas-modern-header">
@@ -703,14 +732,55 @@
 </div>
 <!-- Offcanvas Detalles/Comentarios -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasTarea" aria-labelledby="offcanvasTareaLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasTareaLabel"></h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
-  </div>
-  <div class="offcanvas-body" id="offcanvasTareaBody">
-    <!-- Aquí se carga el contenido dinámicamente -->
-  </div>
+    <div class="offcanvas-header bg-light">
+        <h5 class="offcanvas-title" id="offcanvasTareaLabel">
+            <i class="fas fa-comments me-2"></i>Comentarios de la tarea
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body" id="offcanvasTareaBody">
+        <!-- Formulario para nuevo comentario -->
+        <div class="mb-4">
+            <form id="formComentario" class="needs-validation" novalidate>
+                <div class="form-floating mb-3">
+                    <textarea class="form-control" id="nuevoComentario" placeholder="Escribe tu comentario..." style="height: 100px" required></textarea>
+                    <label for="nuevoComentario">Nuevo comentario</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar comentario
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de comentarios -->
+        <div id="listaComentarios" class="comentarios-container">
+            <!-- Los comentarios se cargarán aquí dinámicamente -->
+        </div>
+    </div>
 </div>
+
+<!-- Template para comentarios -->
+<template id="templateComentario">
+    <div class="comentario mb-3 p-3 rounded shadow-sm" data-id="">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <span class="badge bg-primary me-2 fuente-badge"></span>
+                <strong class="nombre-usuario"></strong>
+                <small class="text-muted ms-2 fecha-comentario"></small>
+            </div>
+            <div class="acciones-comentario">
+                <button class="btn btn-sm btn-outline-primary editar-comentario" style="display: none;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger eliminar-comentario" style="display: none;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <p class="comentario-texto mb-0"></p>
+    </div>
+</template>
+
 <div id="toastEliminarTarea" class="toast align-items-center text-white bg-danger border-0 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 2000; min-width: 350px; max-width: 90vw; display:none;">
   <div class="d-flex">
     <div class="toast-body">
@@ -808,66 +878,49 @@ function abrirOffcanvasComentarios(tareaId) {
   document.getElementById('offcanvasTareaLabel').innerHTML = '<i class="fas fa-comments me-2"></i>Comentarios de la tarea';
   document.getElementById('offcanvasTareaBody').innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando comentarios...</div>';
   offcanvasTarea.show();
-  cargarComentariosOffcanvas();
+  cargarComentarios();
 }
-function cargarComentariosOffcanvas() {
+function cargarComentarios() {
   const cont = document.getElementById('offcanvasTareaBody');
-  cont.innerHTML = `<div class='comentarios-panel'>
-    <div class='comentarios-header'><span class='icono'><i class="fas fa-comments"></i></span><span class='fs-4 fw-bold'>Comentarios</span></div>
-    <div id='comentariosLista'></div>
-    <form class='comentarios-formulario' id='formNuevoComentario'>
-      <input type="text" class="form-control" id="inputComentarioOffcanvas" placeholder="Escribe un comentario..." maxlength="500" required>
-      <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i></button>
-    </form>
-  </div>`;
-  fetch(`/tareas/${tareaIdActual}/comentarios`).then(r => r.json()).then(comentarios => {
-    const lista = document.getElementById('comentariosLista');
-    if (!comentarios || comentarios.length === 0) {
-      lista.innerHTML = '<div class="text-muted text-center mt-3">Sin comentarios aún.</div>';
-      return;
-    }
-    lista.innerHTML = '';
-    comentarios.forEach(c => {
-      let avatar = `<div class='comentario-avatar'>${(c.nombre||'')[0] || '?'}</div>`;
-      let badgeTrello = c.fuente === 'trello' ? `<span class='comentario-badge-trello'>Trello</span>` : '';
-      let acciones = '';
-      if (c.puede_editar || c.puede_eliminar) {
-        acciones = `<div class='comentario-acciones'>`;
-        if (c.puede_editar) {
-          acciones += `<button class='btn btn-link text-primary btn-editar-comentario' title='Editar'><i class='fas fa-edit'></i></button>`;
-        }
-        if (c.puede_eliminar) {
-          acciones += `<button class='btn btn-link text-danger btn-eliminar-comentario' title='Eliminar'><i class='fas fa-trash'></i></button>`;
-        }
-        acciones += `</div>`;
+  if (!cont) return;
+  // Renderizar la estructura del panel de comentarios
+  cont.innerHTML = `
+    <div class='comentarios-panel'>
+      <div class='comentarios-header'>
+        <span class='icono'><i class="fas fa-comments"></i></span>
+        <span class='fs-4 fw-bold'>Comentarios</span>
+        <button class="btn btn-sm btn-info ms-auto" id="btnSyncComentarios" title="Sincronizar comentarios"><i class="fas fa-sync-alt"></i></button>
+      </div>
+      <div id='comentariosLista'><div class="text-center text-muted py-4"><span class="spinner-border"></span> Cargando comentarios...</div></div>
+      <form class='comentarios-formulario' id='formNuevoComentario'>
+        <input type="text" class="form-control" id="inputComentarioOffcanvas" placeholder="Escribe un comentario..." maxlength="500" required>
+        <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i></button>
+      </form>
+    </div>
+  `;
+  document.getElementById('btnSyncComentarios').onclick = function() {
+    sincronizarComentarios();
+  };
+  fetch(`/tareas/${tareaIdActual}/comentarios`)
+    .then(async r => {
+      let data = null;
+      try {
+        data = await r.json();
+      } catch (e) {
+        console.log('No es JSON válido:', e);
       }
-      lista.innerHTML += `
-        <div class='comentario-card'>
-          ${avatar}
-          <div class='comentario-info'>
-            <div><span class='comentario-nombre'>${c.nombre} ${c.apellido}</span><span class='comentario-rol'>${c.rol}</span><span class='comentario-fecha'>${new Date(c.fecha).toLocaleString()}</span>${badgeTrello}</div>
-            <div class='comentario-texto'>${c.comentario}</div>
-          </div>
-          ${acciones}
-        </div>
-      `;
+      return data;
+    })
+    .then(data => {
+      renderComentarios(data && data.comentarios ? data.comentarios : []);
+    })
+    .catch((err) => {
+      const lista = document.getElementById('comentariosLista');
+      if (lista) {
+        lista.innerHTML = '<div class="alert alert-danger">Error al cargar comentarios</div>';
+      }
     });
-    // Acciones editar/eliminar
-    document.querySelectorAll('.btn-editar-comentario').forEach((btn, i) => {
-      btn.onclick = function() {
-        editarComentario(comentarios[i].id, comentarios[i].comentario);
-      };
-    });
-    document.querySelectorAll('.btn-eliminar-comentario').forEach((btn, i) => {
-      btn.onclick = function() {
-        fetch(`/comentarios/${comentarios[i].id}`, {method:'DELETE'}).then(r=>r.json()).then(data=>{
-          if(data.success) cargarComentariosOffcanvas();
-          else mostrarToast(data.message);
-        });
-      };
-    });
-  });
-  // Formulario para agregar comentario
+  // Manejar envío de nuevo comentario
   document.getElementById('formNuevoComentario').onsubmit = function(e) {
     e.preventDefault();
     const input = document.getElementById('inputComentarioOffcanvas');
@@ -880,12 +933,98 @@ function cargarComentariosOffcanvas() {
     }).then(r=>r.json()).then(data=>{
       if(data.success) {
         input.value = '';
-        cargarComentariosOffcanvas();
+        cargarComentarios();
       } else {
         mostrarToast(data.message);
       }
     });
   };
+}
+function renderComentarios(comentarios) {
+  const lista = document.getElementById('comentariosLista');
+  if (!lista) return;
+  // Quitar loader si existe
+  lista.innerHTML = '';
+  if (!Array.isArray(comentarios) || comentarios.length === 0) {
+    lista.innerHTML = '<div class="text-muted text-center mt-3">Sin comentarios aún.</div>';
+    return;
+  }
+  comentarios.forEach(c => {
+    let nombre = c.nombre || c.nombre_trello || 'Trello';
+    let apellido = c.apellido || '';
+    let rol = c.rol || (c.fuente === 'trello' ? 'Trello' : 'Usuario');
+    let avatar = `<div class='comentario-avatar'>${nombre[0] || '?'}</div>`;
+    let badgeTrello = c.fuente === 'trello' ? `<span class='comentario-badge-trello'>Trello</span>` : '';
+    let acciones = '';
+    if (c.puede_editar || c.puede_eliminar) {
+      acciones = `<div class='comentario-acciones'>`;
+      if (c.puede_editar) {
+        acciones += `<button class='btn btn-link text-primary btn-editar-comentario' title='Editar'><i class='fas fa-edit'></i></button>`;
+      }
+      if (c.puede_eliminar) {
+        acciones += `<button class='btn btn-link text-danger btn-eliminar-comentario' title='Eliminar'><i class='fas fa-trash'></i></button>`;
+      }
+      acciones += `</div>`;
+    }
+    lista.innerHTML += `
+      <div class='comentario-card'>
+        ${avatar}
+        <div class='comentario-info'>
+          <div><span class='comentario-nombre'>${nombre} ${apellido}</span><span class='comentario-rol'>${rol}</span><span class='comentario-fecha'>${new Date(c.fecha).toLocaleString()}</span>${badgeTrello}</div>
+          <div class='comentario-texto'>${c.comentario}</div>
+        </div>
+        ${acciones}
+      </div>
+    `;
+  });
+  document.querySelectorAll('.btn-editar-comentario').forEach((btn, i) => {
+    btn.onclick = function() {
+      editarComentario(comentarios[i].id, comentarios[i].comentario);
+    };
+  });
+  document.querySelectorAll('.btn-eliminar-comentario').forEach((btn, i) => {
+    btn.onclick = function() {
+      fetch(`/comentarios/${comentarios[i].id}`, {method:'DELETE'}).then(r=>r.json()).then(data=>{
+        if(data.success) cargarComentarios();
+        else mostrarToast(data.message);
+      });
+    };
+  });
+}
+function sincronizarComentarios() {
+  const btnSync = document.getElementById('btnSyncComentarios');
+  if (btnSync) {
+    btnSync.disabled = true;
+    btnSync.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  }
+  fetch(`/tareas/${tareaIdActual}/sincronizar_comentarios`, {method:'POST'})
+    .then(r => r.json())
+    .then(data => {
+      if (btnSync) {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fas fa-sync-alt"></i>';
+      }
+      cargarComentarios();
+    })
+    .catch(() => {
+      if (btnSync) {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fas fa-sync-alt"></i>';
+      }
+      mostrarToast("Error de red al sincronizar comentarios");
+    });
+}
+function editarComentario(id, comentario) {
+  const nuevoComentario = prompt('Editar comentario:', comentario);
+  if (nuevoComentario === null || nuevoComentario.trim() === '') return;
+  fetch(`/comentarios/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({comentario: nuevoComentario.trim()})
+  }).then(r=>r.json()).then(data=>{
+    if(data.success) cargarComentarios();
+    else mostrarToast(data.message);
+  });
 }
 function abrirToastEliminar(tareaId, btn) {
   tareaAEliminar = { btn, tareaId };
@@ -966,43 +1105,6 @@ formFiltros.onsubmit = function(e) {
 const usuarioId = document.body.dataset.usuarioId;
 const usuarioRol = document.body.dataset.usuarioRol;
 
-function editarComentario(id, comentario) {
-  const nuevoComentario = prompt('Editar comentario:', comentario);
-  if (nuevoComentario === null || nuevoComentario.trim() === '') return;
-  fetch(`/comentarios/${id}`, {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({comentario: nuevoComentario.trim()})
-  }).then(r=>r.json()).then(data=>{
-    if(data.success) cargarComentariosOffcanvas();
-    else mostrarToast(data.message);
-  });
-}
-// Sincronizar con Trello
-const btnSync = document.getElementById('btnSyncTrello');
-if (btnSync) {
-  btnSync.onclick = function() {
-    btnSync.disabled = true;
-    btnSync.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sincronizando...';
-    fetch('/tareas/sincronizar_trello', {method: 'POST'})
-      .then(r => r.json())
-      .then(data => {
-        btnSync.disabled = false;
-        btnSync.innerHTML = '<i class="fab fa-trello me-1"></i>Sincronizar con Trello';
-        if(data.success) {
-          // Recargar solo la tabla de tareas por AJAX aquí si lo deseas
-          location.reload(); // Si quieres evitar recarga total, implementa recarga AJAX de la tabla
-        } else {
-          mostrarToast(data.message);
-        }
-      })
-      .catch(() => {
-        btnSync.disabled = false;
-        btnSync.innerHTML = '<i class="fab fa-trello me-1"></i>Sincronizar con Trello';
-        mostrarToast('Error al sincronizar con Trello.', 'danger');
-      });
-  };
-}
 function mostrarToast(mensaje, tipo = 'success') {
   const toast = document.createElement('div');
   toast.className = `alert alert-${tipo} position-fixed top-0 end-0 m-3 fade show`;

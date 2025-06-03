@@ -1,3 +1,19 @@
+"""
+Rutas y lógica para la gestión de tareas en el sistema de Asignación de Tareas Equitativas.
+
+Este módulo implementa todas las funcionalidades relacionadas con las tareas:
+- Creación y gestión de tareas
+- Integración con Trello
+- Asignación automática y equitativa
+- Seguimiento de tiempo
+- Gestión de adjuntos y comentarios
+- Sincronización bidireccional con Trello
+
+El módulo utiliza un Blueprint de Flask para organizar todas las rutas
+relacionadas con tareas y mantiene la lógica de negocio separada del
+archivo principal de la aplicación.
+"""
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, abort, send_from_directory
 from db_config import get_connection
 from datetime import datetime, timedelta
@@ -9,14 +25,27 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from notificaciones_utils import crear_y_emitir_notificacion
 
+# Crear Blueprint para las rutas de tareas
 tareas_bp = Blueprint('tareas', __name__)
 
-# Rutas para gestión de tareas
 @tareas_bp.route('/tareas/nueva', methods=['GET', 'POST'])
 def nueva_tarea():
+    """Redirige a la lista de equipos para crear una nueva tarea."""
     return redirect(url_for('equipos.lista_equipos'))
 
 def crear_tarjeta_trello(idBoard, nombre_tarea, descripcion):
+    """
+    Crea una nueva tarjeta en Trello.
+    
+    Args:
+        idBoard (str): ID del tablero de Trello
+        nombre_tarea (str): Título de la tarea
+        descripcion (str): Descripción detallada de la tarea
+        
+    Returns:
+        str: ID de la tarjeta creada en Trello o None si hay error
+    """
+    # Obtener la primera lista del tablero (generalmente "To Do")
     url_listas = f"https://api.trello.com/1/boards/{idBoard}/lists"
     params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN}
     resp = requests.get(url_listas, params=params)
@@ -25,6 +54,8 @@ def crear_tarjeta_trello(idBoard, nombre_tarea, descripcion):
     else:
         print("No se pudo obtener la lista del tablero.")
         return None
+        
+    # Crear la tarjeta en la lista obtenida
     url_card = "https://api.trello.com/1/cards"
     params = {
         "idList": idList,
@@ -42,8 +73,18 @@ def crear_tarjeta_trello(idBoard, nombre_tarea, descripcion):
 
 @tareas_bp.route('/tareas/nueva-modal', methods=['POST'])
 def nueva_tarea_modal():
+    """
+    Crea una nueva tarea desde un modal y la sincroniza con Trello.
+    
+    Esta ruta maneja la creación de tareas a través de un modal en la interfaz,
+    creando tanto el registro en la base de datos como la tarjeta en Trello.
+    
+    Returns:
+        JSON: Respuesta con el estado de la operación y el HTML de la nueva tarea
+    """
     from flask import render_template_string
     try:
+        # Obtener datos del formulario
         titulo = request.form['titulo']
         descripcion = request.form['descripcion']
         fecha_limite = request.form['fecha_limite']
@@ -51,28 +92,37 @@ def nueva_tarea_modal():
         habilidades_requeridas = request.form['habilidades_requeridas']
         equipo_id = request.form.get('equipo_id')
         empleado_id = request.form.get('asignado_a')
+        
+        # Crear tarea en la base de datos
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        # Obtener idBoard del equipo
+        
+        # Obtener idBoard del equipo y crear tarjeta en Trello
         cursor.execute('SELECT idBoard FROM equipos WHERE id = %s', (equipo_id,))
         row = cursor.fetchone()
         idBoard = row['idBoard'] if row else None
         idCardTrello = None
         if idBoard:
             idCardTrello = crear_tarjeta_trello(idBoard, titulo, descripcion)
+            
+        # Insertar tarea en la base de datos
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO tareas_trello (titulo, descripcion, fecha_creacion, fecha_limite, 
                               prioridad, horas_estimadas, habilidades_requeridas, tiempo_estimado, tiempo_real, temporizador_activo, inicio_temporizador, equipo_id, empleado_id, idCardTrello)
             VALUES (%s, %s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (titulo, descripcion, fecha_limite, prioridad, 0, habilidades_requeridas, 0, 0, 0, None, equipo_id, empleado_id, idCardTrello))
+        
         conn.commit()
         tarea_id = cursor.lastrowid
+        
+        # Obtener datos de la tarea creada para renderizar
         cursor.execute("SELECT t.*, eq.nombre as equipo_nombre FROM tareas_trello t LEFT JOIN equipos eq ON t.equipo_id = eq.id WHERE t.id = %s", (tarea_id,))
         tarea = cursor.fetchone()
         cursor.close()
         conn.close()
-        # Renderizar la nueva fila de la tabla como HTML
+        
+        # Renderizar la nueva fila de la tabla
         tarea_html = render_template_string('''
         <tr class="modern-row-nueva">
             <td class="fw-semibold">{{ tarea.titulo }}</td>
@@ -101,8 +151,11 @@ def nueva_tarea_modal():
             </td>
         </tr>
         ''', tarea=tarea)
+        
+        # Notificar al empleado asignado
         if empleado_id:
             crear_y_emitir_notificacion(int(empleado_id), f'Se te ha asignado una nueva tarea: {titulo}', 'tarea')
+            
         return jsonify({'success': True, 'tarea_html': tarea_html})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
@@ -803,7 +856,9 @@ def descargar_adjunto(adjunto_id):
 def uploaded_file(filename):
     return send_from_directory(os.path.join(current_app.root_path, 'uploads'), filename)
 
+# --- Utilidades Trello ---
 def agregar_comentario_trello(idCardTrello, comentario):
+    """Agrega un comentario a una tarjeta de Trello y retorna el ID del comentario y el nombre del creador"""
     url = f"https://api.trello.com/1/cards/{idCardTrello}/actions/comments"
     params = {
         "text": comentario,
@@ -812,198 +867,253 @@ def agregar_comentario_trello(idCardTrello, comentario):
     }
     resp = requests.post(url, params=params)
     if resp.status_code == 200:
-        return resp.json().get('id')  # id del comentario en Trello
+        data = resp.json()
+        return {
+            'id': data['id'],
+            'nombre': data.get('memberCreator', {}).get('fullName', 'Trello'),
+            'fecha': data['date']
+        }
     return None
 
-def editar_comentario_trello(idCardTrello, idCommentTrello, nuevo_comentario):
-    url = f"https://api.trello.com/1/cards/{idCardTrello}/actions/{idCommentTrello}/comments"
+def obtener_comentarios_trello(idCardTrello):
+    """Obtiene todos los comentarios de una tarjeta de Trello"""
+    url = f"https://api.trello.com/1/cards/{idCardTrello}/actions"
     params = {
-        "text": nuevo_comentario,
+        "filter": "commentCard",
         "key": TRELLO_API_KEY,
         "token": TRELLO_API_TOKEN
     }
-    resp = requests.put(url, params=params)
-    return resp.status_code == 200
+    resp = requests.get(url, params=params)
+    if resp.status_code == 200:
+        return resp.json()
+    return []
 
-def eliminar_comentario_trello(idCardTrello, idCommentTrello):
-    url = f"https://api.trello.com/1/cards/{idCardTrello}/actions/{idCommentTrello}/comments"
-    params = {
-        "key": TRELLO_API_KEY,
-        "token": TRELLO_API_TOKEN
-    }
-    resp = requests.delete(url, params=params)
-    return resp.status_code == 200
-
+# --- Rutas de Comentarios ---
 @tareas_bp.route('/tareas/<int:tarea_id>/comentarios', methods=['GET'])
 @login_required
 def listar_comentarios_tarea(tarea_id):
+    """Lista todos los comentarios de una tarea, incluyendo los de Trello"""
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        # Obtener idCardTrello de la tarea
+        
+        # Obtener la tarea y su idCardTrello
         cursor.execute('SELECT idCardTrello FROM tareas_trello WHERE id = %s', (tarea_id,))
-        row = cursor.fetchone()
-        idCardTrello = row['idCardTrello'] if row else None
-        # Comentarios del sistema
+        tarea = cursor.fetchone()
+        if not tarea:
+            return jsonify({'error': 'Tarea no encontrada'}), 404
+            
+        # Obtener comentarios locales
         cursor.execute('''
-            SELECT c.id, c.comentario, c.fecha, c.usuario_id, e.nombre, e.apellido, e.rol, c.id_comment_trello
-            FROM comentarios_tarea c
-            JOIN empleados e ON c.usuario_id = e.id
-            WHERE c.tarea_id = %s
-            ORDER BY c.fecha ASC
-        ''', (tarea_id,))
-        comentarios_db = cursor.fetchall()
-        comentarios = []
-        ids_trello_db = set()
-        for c in comentarios_db:
-            if c['id_comment_trello']:
-                ids_trello_db.add(c['id_comment_trello'])
-            c['fuente'] = 'sistema'
-            c['puede_editar'] = (c['usuario_id'] == current_user.id or current_user.rol == 'jefe')
-            c['puede_eliminar'] = (c['usuario_id'] == current_user.id or current_user.rol == 'jefe')
-            comentarios.append(c)
-        # Comentarios de Trello: sincronizar con la base local
-        if idCardTrello:
-            url = f"https://api.trello.com/1/cards/{idCardTrello}/actions"
-            params = {"key": TRELLO_API_KEY, "token": TRELLO_API_TOKEN, "filter": "commentCard"}
-            resp = requests.get(url, params=params)
-            if resp.status_code == 200:
-                for action in resp.json():
-                    id_comment_trello = action['id']
-                    if id_comment_trello in ids_trello_db:
-                        continue  # Ya está en la base de datos
-                    # Insertar comentario de Trello en la base local
-                    cursor.execute('''
-                        INSERT INTO comentarios_tarea (tarea_id, usuario_id, comentario, fecha, id_comment_trello)
-                        VALUES (%s, NULL, %s, %s, %s)
-                    ''', (tarea_id, action['data']['text'], action['date'], id_comment_trello))
-                    conn.commit()
-                    comentarios.append({
-                        'id': None,
-                        'comentario': action['data']['text'],
-                        'fecha': action['date'],
-                        'usuario_id': None,
-                        'nombre': action['memberCreator']['fullName'],
-                        'apellido': '',
-                        'rol': 'Trello',
-                        'id_comment_trello': id_comment_trello,
-                        'fuente': 'trello',
-                        'puede_editar': False,
-                        'puede_eliminar': False
-                    })
-        # Volver a consultar todos los comentarios (incluyendo los recién insertados)
-        cursor.execute('''
-            SELECT c.id, c.comentario, c.fecha, c.usuario_id, e.nombre, e.apellido, e.rol, c.id_comment_trello
+            SELECT c.*, e.nombre, e.apellido, e.rol
             FROM comentarios_tarea c
             LEFT JOIN empleados e ON c.usuario_id = e.id
             WHERE c.tarea_id = %s
-            ORDER BY c.fecha ASC
+            ORDER BY c.fecha_creacion DESC
         ''', (tarea_id,))
-        comentarios = []
-        for c in cursor.fetchall():
-            c['fuente'] = 'trello' if c['usuario_id'] is None else 'sistema'
-            c['puede_editar'] = (c['usuario_id'] == current_user.id or current_user.rol == 'jefe') if c['usuario_id'] else False
-            c['puede_eliminar'] = (c['usuario_id'] == current_user.id or current_user.rol == 'jefe') if c['usuario_id'] else False
-            comentarios.append(c)
+        comentarios_locales = cursor.fetchall()
+        
+        # Obtener comentarios de Trello
+        comentarios_trello = []
+        if tarea['idCardTrello']:
+            comentarios_trello = obtener_comentarios_trello(tarea['idCardTrello'])
+            
+        # Procesar comentarios de Trello
+        for c in comentarios_trello:
+            # Verificar si el comentario ya existe en la base de datos
+            cursor.execute('SELECT id FROM comentarios_tarea WHERE id_comment_trello = %s', (c['id'],))
+            if not cursor.fetchone():
+                # Insertar nuevo comentario de Trello
+                cursor.execute('''
+                    INSERT INTO comentarios_tarea 
+                    (tarea_id, comentario, fecha_creacion, id_comment_trello, nombre_trello, fuente)
+                    VALUES (%s, %s, %s, %s, %s, 'trello')
+                ''', (
+                    tarea_id,
+                    c['data']['text'],
+                    c['date'],
+                    c['id'],
+                    c.get('memberCreator', {}).get('fullName', 'Trello')
+                ))
+                conn.commit()
+        
+        # Obtener todos los comentarios actualizados
+        cursor.execute('''
+            SELECT c.*, e.nombre, e.apellido, e.rol
+            FROM comentarios_tarea c
+            LEFT JOIN empleados e ON c.usuario_id = e.id
+            WHERE c.tarea_id = %s
+            ORDER BY c.fecha_creacion DESC
+        ''', (tarea_id,))
+        comentarios = cursor.fetchall()
+        
+        # Formatear comentarios para el frontend
+        comentarios_formateados = []
+        for c in comentarios:
+            comentario = {
+                'id': c['id'],
+                'comentario': c['comentario'],
+                'fecha': c['fecha_creacion'].strftime('%Y-%m-%d %H:%M:%S'),
+                'fuente': c['fuente'],
+                'puede_editar': c['fuente'] == 'sistema' and c['usuario_id'] == current_user.id,
+                'puede_eliminar': c['fuente'] == 'sistema' and c['usuario_id'] == current_user.id
+            }
+            
+            if c['fuente'] == 'sistema':
+                comentario.update({
+                    'nombre': c['nombre'] or 'Usuario',
+                    'apellido': c['apellido'] or '',
+                    'rol': c['rol'] or 'Usuario'
+                })
+            else:
+                comentario.update({
+                    'nombre': c['nombre_trello'] or 'Trello',
+                    'apellido': '',
+                    'rol': 'Trello'
+                })
+                
+            comentarios_formateados.append(comentario)
+            
+        return jsonify({'comentarios': comentarios_formateados})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
         cursor.close()
         conn.close()
-        # Ordenar por fecha
-        comentarios.sort(key=lambda x: x['fecha'])
-        return jsonify(comentarios)
-    except Exception as e:
-        import traceback
-        print('Error interno en listar_comentarios_tarea:', str(e))
-        print(traceback.format_exc())
-        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 @tareas_bp.route('/tareas/<int:tarea_id>/comentarios', methods=['POST'])
 @login_required
 def agregar_comentario_tarea(tarea_id):
+    """Agrega un nuevo comentario a una tarea y lo sincroniza con Trello"""
     try:
-        data = request.get_json()
-        comentario = data.get('comentario', '').strip()
+        comentario = request.json.get('comentario')
         if not comentario:
-            return jsonify({'success': False, 'message': 'El comentario no puede estar vacío.'}), 400
+            return jsonify({'error': 'El comentario no puede estar vacío'}), 400
+            
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
+        
+        # Obtener la tarea y su idCardTrello
         cursor.execute('SELECT idCardTrello FROM tareas_trello WHERE id = %s', (tarea_id,))
         tarea = cursor.fetchone()
         if not tarea:
-            cursor.close()
-            conn.close()
-            return jsonify({'success': False, 'message': 'La tarea no existe.'}), 404
-        idCardTrello = tarea['idCardTrello']
-        idCommentTrello = None
-        if idCardTrello:
-            idCommentTrello = agregar_comentario_trello(idCardTrello, comentario)
+            return jsonify({'error': 'Tarea no encontrada'}), 404
+            
+        # Agregar comentario a Trello si existe idCardTrello
+        id_comment_trello = None
+        nombre_trello = None
+        if tarea['idCardTrello']:
+            resultado_trello = agregar_comentario_trello(tarea['idCardTrello'], comentario)
+            if resultado_trello:
+                id_comment_trello = resultado_trello['id']
+                nombre_trello = resultado_trello['nombre']
+        
+        # Insertar comentario en la base de datos
         cursor.execute('''
-            INSERT INTO comentarios_tarea (tarea_id, usuario_id, comentario, id_comment_trello)
-            VALUES (%s, %s, %s, %s)
-        ''', (tarea_id, current_user.id, comentario, idCommentTrello))
+            INSERT INTO comentarios_tarea 
+            (tarea_id, usuario_id, comentario, id_comment_trello, nombre_trello, fuente)
+            VALUES (%s, %s, %s, %s, %s, 'sistema')
+        ''', (tarea_id, current_user.id, comentario, id_comment_trello, nombre_trello))
         conn.commit()
-        # Notificar a los asignados de la tarea ANTES de cerrar la conexión
-        cursor.execute('SELECT empleado_id FROM tareas_trello WHERE id = %s', (tarea_id,))
-        tarea = cursor.fetchone()
-        if tarea and tarea['empleado_id'] and tarea['empleado_id'] != current_user.id:
-            crear_y_emitir_notificacion(tarea['empleado_id'], f'Nuevo comentario en tu tarea.', 'comentario')
+        
+        # Obtener el comentario recién creado con información del usuario
+        cursor.execute('''
+            SELECT c.*, e.nombre, e.apellido, e.rol
+            FROM comentarios_tarea c
+            JOIN empleados e ON c.usuario_id = e.id
+            WHERE c.id = %s
+        ''', (cursor.lastrowid,))
+        nuevo_comentario = cursor.fetchone()
+        
+        return jsonify({
+            'success': True,
+            'comentario': {
+                'id': nuevo_comentario['id'],
+                'comentario': nuevo_comentario['comentario'],
+                'fecha': nuevo_comentario['fecha_creacion'].strftime('%Y-%m-%d %H:%M:%S'),
+                'nombre': nuevo_comentario['nombre'],
+                'apellido': nuevo_comentario['apellido'],
+                'rol': nuevo_comentario['rol'],
+                'fuente': 'sistema',
+                'puede_editar': True,
+                'puede_eliminar': True
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
         cursor.close()
         conn.close()
-        return jsonify({'success': True})
-    except Exception as e:
-        import traceback
-        print('Error interno en agregar_comentario_tarea:', str(e))
-        print(traceback.format_exc())
-        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 @tareas_bp.route('/comentarios/<int:comentario_id>', methods=['DELETE'])
 @login_required
 def eliminar_comentario_tarea(comentario_id):
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute('SELECT c.usuario_id, c.id_comment_trello, t.idCardTrello FROM comentarios_tarea c JOIN tareas_trello t ON c.tarea_id = t.id WHERE c.id = %s', (comentario_id,))
-    row = cursor.fetchone()
-    if not row:
+    """Elimina un comentario del sistema (no permite eliminar comentarios de Trello)"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verificar que el comentario existe y pertenece al usuario actual
+        cursor.execute('''
+            SELECT * FROM comentarios_tarea 
+            WHERE id = %s AND usuario_id = %s AND fuente = 'sistema'
+        ''', (comentario_id, current_user.id))
+        comentario = cursor.fetchone()
+        
+        if not comentario:
+            return jsonify({'error': 'Comentario no encontrado o no tienes permiso para eliminarlo'}), 404
+            
+        # Eliminar el comentario
+        cursor.execute('DELETE FROM comentarios_tarea WHERE id = %s', (comentario_id,))
+        conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
         cursor.close()
         conn.close()
-        return jsonify({'success': False, 'message': 'Comentario no encontrado.'}), 404
-    if row['usuario_id'] != current_user.id and current_user.rol != 'jefe':
-        cursor.close()
-        conn.close()
-        return jsonify({'success': False, 'message': 'No tienes permiso para eliminar este comentario.'}), 403
-    if row['id_comment_trello'] and row['idCardTrello']:
-        eliminar_comentario_trello(row['idCardTrello'], row['id_comment_trello'])
-    cursor.execute('DELETE FROM comentarios_tarea WHERE id = %s', (comentario_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({'success': True})
 
 @tareas_bp.route('/comentarios/<int:comentario_id>', methods=['PUT'])
 @login_required
 def editar_comentario_tarea(comentario_id):
-    data = request.get_json()
-    nuevo_comentario = data.get('comentario', '').strip()
-    if not nuevo_comentario:
-        return jsonify({'success': False, 'message': 'El comentario no puede estar vacío.'}), 400
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute('SELECT c.usuario_id, c.id_comment_trello, t.idCardTrello FROM comentarios_tarea c JOIN tareas_trello t ON c.tarea_id = t.id WHERE c.id = %s', (comentario_id,))
-    row = cursor.fetchone()
-    if not row:
+    """Edita un comentario del sistema (no permite editar comentarios de Trello)"""
+    try:
+        nuevo_comentario = request.json.get('comentario')
+        if not nuevo_comentario:
+            return jsonify({'error': 'El comentario no puede estar vacío'}), 400
+            
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verificar que el comentario existe y pertenece al usuario actual
+        cursor.execute('''
+            SELECT * FROM comentarios_tarea 
+            WHERE id = %s AND usuario_id = %s AND fuente = 'sistema'
+        ''', (comentario_id, current_user.id))
+        comentario = cursor.fetchone()
+        
+        if not comentario:
+            return jsonify({'error': 'Comentario no encontrado o no tienes permiso para editarlo'}), 404
+            
+        # Actualizar el comentario
+        cursor.execute('''
+            UPDATE comentarios_tarea 
+            SET comentario = %s, fecha_actualizacion = NOW()
+            WHERE id = %s
+        ''', (nuevo_comentario, comentario_id))
+        conn.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
         cursor.close()
         conn.close()
-        return jsonify({'success': False, 'message': 'Comentario no encontrado.'}), 404
-    if row['usuario_id'] != current_user.id and current_user.rol != 'jefe':
-        cursor.close()
-        conn.close()
-        return jsonify({'success': False, 'message': 'No tienes permiso para editar este comentario.'}), 403
-    if row['id_comment_trello'] and row['idCardTrello']:
-        editar_comentario_trello(row['idCardTrello'], row['id_comment_trello'], nuevo_comentario)
-    cursor.execute('UPDATE comentarios_tarea SET comentario = %s WHERE id = %s', (nuevo_comentario, comentario_id))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({'success': True})
 
 @tareas_bp.route('/tareas/eliminar/<int:tarea_id>', methods=['POST'])
 @login_required

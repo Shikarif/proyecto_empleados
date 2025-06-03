@@ -229,3 +229,7 @@ Animaciones y transiciones
 ¿Quieres sincronización automática?
 Si deseas que el sistema se actualice automáticamente cuando mueves una tarjeta en Trello, necesitas implementar un webhook de Trello o una tarea programada (cron job) que ejecute la sincronización cada cierto tiempo.
 ¿Te gustaría que te ayude a implementar la sincronización automática o a mejorar la experiencia de sincronización?
+
+comvertir un lider en practicante 
+reasignar un usuario de un equipo a otro 
+notificaciones

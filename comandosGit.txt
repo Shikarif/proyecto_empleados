@@ -12,6 +12,18 @@ git push origin main -->Subir los cmabios al GitHub en la rama principal (main o
 
 --🖤Comandos para el sistema💜--
 
+#0. crear un nuevo venv 
+python -m venv venv
+
+
+
+#1. instalar las dependencias
+pip install -r requirements.txt
+
+(USO -> Instala todas las dependencias (librerias y modulos de python) que el proyecto necesita para
+que todo el sistema💜 funcione bien.
+---------------------------------------------
+
 # 1. Activar el entorno virtual
 venv\Scripts\activate
 
