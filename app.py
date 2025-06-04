@@ -10,7 +10,7 @@ from flask_login import login_required, current_user, LoginManager, UserMixin, l
 from werkzeug.security import check_password_hash, generate_password_hash
 import openpyxl
 import io
-from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
@@ -27,6 +27,9 @@ from PIL import Image
 from PIL import UnidentifiedImageError
 from helpers import equipo_requerido
 import shutil
+from openpyxl.utils import get_column_letter
+from reportlab.lib.pagesizes import A4, landscape as rl_landscape
+from reportlab.lib.utils import ImageReader
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para los mensajes flash
@@ -888,7 +891,7 @@ def jefes():
         LEFT JOIN equipos eq ON e.equipo_id = eq.id
         LEFT JOIN empleados_trello et ON e.id = et.empleado_id
         WHERE e.rol IN ('lider', 'practicante')
-        ORDER BY e.nombre, e.apellido
+        ORDER BY FIELD(e.rol, 'jefe', 'lider', 'practicante'), e.apellido, e.nombre
     """)
     empleados_equipo = cursor.fetchall()
     # KPIs: usuarios logueados por rol
@@ -1048,11 +1051,11 @@ def exportar_empleados_excel():
     cursor = conexion.cursor()
     # Obtener todos los empleados relevantes
     cursor.execute("""
-        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, e.telefono, e.horas_disponibles, e.habilidades, e.fecha_registro
+        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, e.telefono, e.horas_disponibles, e.habilidades
         FROM empleados e
         LEFT JOIN equipos eq ON e.equipo_id = eq.id
         WHERE e.rol IN ('lider', 'practicante')
-        ORDER BY e.nombre, e.apellido
+        ORDER BY FIELD(e.rol, 'jefe', 'lider', 'practicante'), e.apellido, e.nombre
     """)
     empleados = cursor.fetchall()
 
@@ -1060,7 +1063,7 @@ def exportar_empleados_excel():
     ws = wb.active
     ws.title = "Empleados"
     ws.append([
-        "Nombre", "Apellido", "Correo", "Rol", "Equipo", "Teléfono", "Habilidades", "Fortalezas", "Horas Disponibles", "Fecha Registro",
+        "Nombre", "Apellido", "Correo", "Rol", "Equipo", "Teléfono", "Habilidades", "Fortalezas", "Horas Disponibles",
         "Tareas Asignadas", "Tareas Completadas", "Tareas Pendientes", "Prioridad Más Alta", "Títulos de Tareas"
     ])
 
@@ -1090,9 +1093,20 @@ def exportar_empleados_excel():
         ws.append([
             emp[1], emp[2], emp[3], emp[4], emp[5], emp[6],
             habilidades or emp[8] or '', fortalezas, emp[7],
-            emp[9].strftime('%d/%m/%Y') if emp[9] else '',
             total_tareas, tareas_completadas, tareas_pendientes, prioridad_mas_alta, titulos_tareas
         ])
+    # Ajustar el ancho de las columnas automáticamente según el contenido
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter  # Get the column name
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = max_length + 2  # Un poco de espacio extra
+        ws.column_dimensions[column].width = adjusted_width
     cursor.close()
     conexion.close()
     output = io.BytesIO()
@@ -1109,80 +1123,90 @@ def exportar_empleados_excel():
 @login_required
 @rol_requerido('jefe')
 def exportar_empleados_pdf():
-    conexion = get_connection()
-    cursor = conexion.cursor()
-    cursor.execute("""
-        SELECT e.id, e.nombre, e.apellido, e.correo, e.rol, eq.nombre as equipo, e.telefono, e.horas_disponibles, e.habilidades, e.fecha_registro
-        FROM empleados e
-        LEFT JOIN equipos eq ON e.equipo_id = eq.id
-        WHERE e.rol IN ('lider', 'practicante')
-        ORDER BY e.nombre, e.apellido
-    """)
-    empleados = cursor.fetchall()
-
-    # Encabezados
-    data = [[
-        "Nombre", "Apellido", "Correo", "Rol", "Equipo", "Teléfono", "Habilidades", "Fortalezas", "Horas Disponibles", "Fecha Registro",
-        "Tareas Asignadas", "Tareas Completadas", "Tareas Pendientes", "Prioridad Más Alta", "Títulos de Tareas"
-    ]]
-
-    for emp in empleados:
-        empleado_id = emp[0]
-        habilidades, fortalezas = obtener_habilidades_fortalezas(cursor, empleado_id)
-        # Tareas asignadas
-        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s", (empleado_id,))
-        total_tareas = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado = 'completada'", (empleado_id,))
-        tareas_completadas = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM tareas WHERE empleado_id = %s AND estado != 'completada'", (empleado_id,))
-        tareas_pendientes = cursor.fetchone()[0]
-        # Prioridad más alta
-        cursor.execute("SELECT prioridad FROM tareas WHERE empleado_id = %s", (empleado_id,))
-        prioridades = [row[0] for row in cursor.fetchall()]
-        prioridad_mas_alta = 'N/A'
-        if 'alta' in prioridades:
-            prioridad_mas_alta = 'alta'
-        elif 'media' in prioridades:
-            prioridad_mas_alta = 'media'
-        elif 'baja' in prioridades:
-            prioridad_mas_alta = 'baja'
-        # Títulos de tareas
-        cursor.execute("SELECT titulo FROM tareas WHERE empleado_id = %s", (empleado_id,))
-        titulos_tareas = ', '.join([row[0] for row in cursor.fetchall()])
-        data.append([
-            emp[1], emp[2], emp[3], emp[4], emp[5], emp[6],
-            habilidades or emp[8] or '', fortalezas, emp[7],
-            emp[9].strftime('%d/%m/%Y') if emp[9] else '',
-            total_tareas, tareas_completadas, tareas_pendientes, prioridad_mas_alta, titulos_tareas
-        ])
-    cursor.close()
-    conexion.close()
-
+    from reportlab.lib.pagesizes import A4, landscape as rl_landscape
+    from reportlab.lib.utils import ImageReader
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=landscape(letter))
-    width, height = landscape(letter)
-
-    # Crear tabla
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F81BD')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
-    ]))
-    table_width, table_height = table.wrapOn(c, width, height)
-    table.drawOn(c, 20, height - table_height - 40)
+    c = canvas.Canvas(buffer, pagesize=rl_landscape(A4))
+    width, height = rl_landscape(A4)
+    y = height - 60
+    # Logo centrado
+    logo_path = os.path.join('proyecto_empleados', 'static', 'img', 'Reflexo_Perulogo.png')
+    if os.path.exists(logo_path):
+        logo_width = 120
+        logo_height = 80
+        c.drawImage(ImageReader(logo_path), (width - logo_width) / 2, y, width=logo_width, height=logo_height, mask='auto')
+        y -= logo_height + 10
+    # Título principal centrado
+    c.setFont('Helvetica-Bold', 22)
+    c.setFillColor(colors.HexColor('#4F81BD'))
+    c.drawCentredString(width / 2, y, "APM INVERSIONES EIRL")
+    c.setFont('Helvetica', 13)
+    c.setFillColor(colors.black)
+    y -= 30
+    c.drawCentredString(width / 2, y, "Socio estratégico en el crecimiento de clínicas y profesionales de la salud")
+    y -= 40
+    # Definir columnas
+    col1_x = width * 0.08
+    col2_x = width * 0.54
+    col_width = width * 0.38
+    y_start = y
+    y1 = y_start
+    y2 = y_start
+    # Función para bloques en columna
+    def draw_block_col(x, y, title, text, color, font_size=15, text_font='Helvetica', text_size=11, space=28):
+        c.setFont('Helvetica-Bold', font_size)
+        c.setFillColor(color)
+        c.drawString(x, y, title)
+        c.setFont(text_font, text_size)
+        c.setFillColor(colors.black)
+        y -= 18
+        lines = split_text(text, col_width-10, c, text_font, text_size)
+        for line in lines:
+            c.drawString(x, y, line)
+            y -= 15
+        return y - space
+    def split_text(text, max_width, canvas, font, size):
+        words = text.split()
+        lines = []
+        line = ''
+        canvas.setFont(font, size)
+        for word in words:
+            test_line = f'{line} {word}'.strip()
+            if canvas.stringWidth(test_line) <= max_width:
+                line = test_line
+            else:
+                lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
+        return lines
+    # Columna 1
+    y1 = draw_block_col(col1_x, y1, "Misión:", "Ser el socio estratégico en el crecimiento de clínicas y profesionales de la salud, implementando soluciones de marketing digital personalizadas e integración de tecnologías CRM y ERP.", colors.HexColor('#00CFFF'))
+    y1 = draw_block_col(col1_x, y1, "Objetivo:", "Lograr que clínicas y profesionales experimenten un crecimiento constante y sostenible mediante estrategias digitales y tecnológicas avanzadas.", colors.HexColor('#FFB347'))
+    y1 = draw_block_col(col1_x, y1, "Valores:", "Honestidad, Innovación, Respeto, Calidad", colors.HexColor('#7F9CF5'))
+    y1 = draw_block_col(col1_x, y1, "Servicios principales:", "- Desarrollo y mantenimiento web\n- Marketing digital (Google Ads, Facebook Ads, SEO)\n- Integración CRM y ERP\n- Publicidad en redes sociales", colors.HexColor('#00CFFF'))
+    # Columna 2
+    y2 = draw_block_col(col2_x, y2, "Visión:", "Liderar la transformación digital del sector salud, impulsando el crecimiento sostenible de clínicas y profesionales visionarios con soluciones tecnológicas y de marketing innovadoras.", colors.HexColor('#7F9CF5'))
+    y2 = draw_block_col(col2_x, y2, "¿A quién va dirigido?", "- Clínicas consolidadas y en expansión\n- Profesionales de la salud independientes\n- Redes de clínicas/franquicias\n- Instituciones de salud", colors.HexColor('#00CFFF'))
+    y2 = draw_block_col(col2_x, y2, "Sobre el sistema:", "Esta plataforma digitaliza y optimiza la gestión de empleados, equipos y tareas en clínicas y empresas de salud, integrando herramientas modernas como Trello y paneles de control avanzados para impulsar la eficiencia y el crecimiento.", colors.HexColor('#7F9CF5'), font_size=15, text_font='Helvetica', text_size=11, space=18)
+    # Frases motivacionales centradas abajo
+    y_frases = min(y1, y2) - 30
+    frases = [
+        ("La tecnología en salud no solo transforma clínicas, transforma vidas.", colors.HexColor('#00CFFF')),
+        ("Innovar es cuidar mejor.", colors.HexColor('#43e97b')),
+        ("El futuro de la salud es digital, seguro y humano.", colors.HexColor('#00CFFF'))
+    ]
+    c.setFont('Helvetica-Oblique', 12)
+    for frase, color in frases:
+        c.setFillColor(color)
+        c.drawCentredString(width / 2, y_frases, f'"{frase}"')
+        y_frases -= 18
     c.save()
     buffer.seek(0)
     return send_file(
         buffer,
         as_attachment=True,
-        download_name="empleados_completo.pdf",
+        download_name="empresa_presentacion.pdf",
         mimetype="application/pdf"
     )
 
@@ -1333,8 +1357,8 @@ def exportar_reporte_pdf():
             t['tiempo_estimado'], t['tiempo_real']
         ])
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=landscape(letter))
-    width, height = landscape(letter)
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    width, height = landscape(A4)
     table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F81BD')),
@@ -2218,6 +2242,23 @@ def actualizar_adjuntos_tarea_archivada(tarea_id):
     conexion.commit()
     conexion.close()
     return {'success': True}
+
+@app.route('/jefes/eliminar/<int:jefe_id>', methods=['POST'])
+@login_required
+def eliminar_jefe(jefe_id):
+    if current_user.rol != 'jefe':
+        return {'success': False, 'message': 'Acceso restringido solo para jefes.'}, 403
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT COUNT(*) as total FROM empleados WHERE rol = 'jefe'")
+    total_jefes = cursor.fetchone()['total']
+    if total_jefes <= 1:
+        conexion.close()
+        return {'success': False, 'message': 'Debe haber al menos un jefe en el sistema.'}, 400
+    cursor.execute("DELETE FROM empleados WHERE id = %s AND rol = 'jefe'", (jefe_id,))
+    conexion.commit()
+    conexion.close()
+    return {'success': True, 'message': 'Jefe eliminado correctamente.'}
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

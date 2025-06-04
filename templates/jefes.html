@@ -23,18 +23,28 @@
                   <th>Nombre</th>
                   <th>Apellido</th>
                   <th>Correo</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
+                {% set total_jefes = jefes|length %}
                 {% for jefe in jefes %}
                 <tr style="border-bottom:1px solid #232946;">
                   <td>{{ jefe[1] }}</td>
                   <td>{{ jefe[2] }}</td>
                   <td>{{ jefe[3] }}</td>
+                  <td>
+                    {% if total_jefes > 1 %}
+                    <button class="btn btn-danger btn-circular" title="Eliminar jefe"
+                      onclick='abrirPanelEliminarJefe({{ jefe[0] }}, "{{ (jefe[1]|e ~ ' ' ~ jefe[2]|e)|replace('"', '\\"') }}")'>
+                      <i class="fas fa-trash"></i>
+                    </button>
+                    {% endif %}
+                  </td>
                 </tr>
                 {% endfor %}
                 {% if not jefes %}
-                <tr><td colspan="3" class="text-center text-muted">No hay jefes registrados.</td></tr>
+                <tr><td colspan="4" class="text-center text-muted">No hay jefes registrados.</td></tr>
                 {% endif %}
               </tbody>
             </table>
@@ -335,6 +345,23 @@
     </form>
   </div>
 </div>
+<!-- Panel flotante para eliminar jefe -->
+<div id="panelEliminarJefe" class="panel-flotante-eliminar" style="display:none;z-index:3000;">
+  <div class="panel-flotante-header">
+    <i class="fas fa-trash-alt me-2"></i>Eliminar jefe
+    <button type="button" class="btn-cerrar-panel" onclick="cerrarPanelEliminarJefe()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="panel-flotante-body">
+    <div class="alerta-panel">
+      <b>¡Advertencia!</b> Esta acción eliminará <u>definitivamente</u> al jefe y todos sus permisos del sistema.<br>
+      ¿Eliminar al jefe <span id="eliminarJefeNombre"></span>?
+    </div>
+    <div class="panel-flotante-acciones">
+      <button type="button" class="btn btn-secondary" onclick="cerrarPanelEliminarJefe()">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btnConfirmarEliminarJefe">Eliminar definitivamente</button>
+    </div>
+  </div>
+</div>
 <script>
 // Panel flotante Crear Jefe
 function abrirPanelCrearJefe() {
@@ -459,6 +486,37 @@ document.querySelectorAll('.btn-eliminar-equipo').forEach(btn => {
     });
   };
 });
+function abrirPanelEliminarJefe(jefeId, nombre) {
+  cerrarPanelEliminarJefe();
+  var panel = document.getElementById('panelEliminarJefe');
+  var nombreSpan = document.getElementById('eliminarJefeNombre');
+  if (!panel || !nombreSpan) return;
+  nombreSpan.textContent = '"' + nombre + '"';
+  document.getElementById('btnConfirmarEliminarJefe').onclick = function() {
+    eliminarJefe(jefeId);
+    cerrarPanelEliminarJefe();
+  };
+  panel.style.display = 'block';
+}
+function cerrarPanelEliminarJefe() {
+  var panel = document.getElementById('panelEliminarJefe');
+  if (panel) panel.style.display = 'none';
+}
+function eliminarJefe(jefeId) {
+  fetch(`/jefes/eliminar/${jefeId}`, {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+      if(data.success) {
+        alert('Jefe eliminado correctamente.');
+        location.reload();
+      } else {
+        alert(data.message || 'No se pudo eliminar el jefe.');
+      }
+    })
+    .catch(() => {
+      alert('Error al eliminar el jefe.');
+    });
+}
 </script>
 <style>
 .kpi-card-glass {
