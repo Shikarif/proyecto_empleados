@@ -43,7 +43,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Inicializar SocketIO
-socketio = SocketIO(app, async_mode='eventlet')
+socketio = SocketIO(app, async_mode='threading')
 
 # Modelo de usuario compatible con Flask-Login
 class Usuario(UserMixin):
