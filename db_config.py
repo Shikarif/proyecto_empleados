@@ -34,9 +34,9 @@ def get_connection():
         mysql.connector.Error: Si hay un error al conectar con la base de datos
     """
     return mysql.connector.connect(
-        host="localhost",  # Servidor de base de datos
-        user="root",       # Usuario de la base de datos
-        password="",       # Contraseña del usuario
-        database="testdb"  # Nombre de la base de datos
+        host='localhost',
+        user='root',
+        password='',
+        database='testdb'
     )
 
