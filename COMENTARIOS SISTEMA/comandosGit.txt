@@ -1,0 +1,32 @@
+--😊Comando de GitHub--
+
+git remote add origin https://github.com/usuario/tu-repo.git -->Repositorio Remoto
+git init -->Inicializar el respositorio de GitHub
+git add . -->Agregar todos los archivos modificdos
+git commit -m "Descripción de los cambios" -->Commit - descripcion del cambio
+git add nombre_del_archivo.py -->Agrgar los cambios de los archivos especificos
+git push -->Subir cambios locales
+git push origin main -->Subir los cmabios al GitHub en la rama principal (main o master -->Nombre de la rama) 
+                        (origin --> Nombre del repositorio Remoto) 
+
+
+--🖤Comandos para el sistema💜--
+
+#0. crear un nuevo venv 
+python -m venv venv
+
+#1. instalar las dependencias
+pip install -r requirements.txt
+
+(USO -> Instala todas las dependencias (librerias y modulos de python) que el proyecto necesita para
+que todo el sistema💜 funcione bien.
+---------------------------------------------
+
+# 1. Activar el entorno virtual
+venv\Scripts\activate
+
+# 2. Ejecutar la aplicación
+python app.py
+
+# 3. Restaurar entorno de desarrollo
+pip install -r requirements_backup.txt
